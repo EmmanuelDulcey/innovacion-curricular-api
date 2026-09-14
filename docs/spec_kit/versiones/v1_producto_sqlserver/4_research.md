@@ -106,14 +106,15 @@ rompe ese ciclo. El matiz de los volúmenes anónimos importa: los
 compilados de Linux (los del contenedor) no deben mezclarse con los de
 Windows (los del IDE del estudiante).
 
-## D8 — Docker compose desde el inicio (tres servicios)
+## D8 — Docker compose desde el inicio (API + Frontend)
 
 **Decisión:** `docker-compose.yml` con `sqlserver` + `sqlserver-init` +
-`api-innovacion` desde esta versión — `docker compose up -d --build` deja
-todo funcionando.
+`api-innovacion` + `frontend` desde esta versión —
+`docker compose up -d --build` deja **todo** funcionando (API + Frontend).
 
-**Por qué:** el sistema debe quedar completo con un solo comando; la
-infraestructura se construye por incrementos igual que la API.
+**Por qué:** el sistema debe quedar completo con un solo comando (Artículo
+4); la infraestructura se construye por incrementos igual que la API, y el
+Frontend forma parte del sistema desde la v1.
 
 ## D9 — Borrado lógico agregado mediante una columna adicional
 
@@ -164,4 +165,59 @@ borrado lógico.
 **Por qué:** mantiene el mismo mecanismo de inicialización que el resto
 de la base — un contenedor que prepara todo antes de que la API arranque,
 sin pasos manuales adicionales.
+
+## D13 — Angular como frontend desde la v1
+
+**Contexto.** La v1 debe entregar un sistema usable (dashboard + CRUD
+visual), no solo una API. El frontend debe existir desde la primera versión
+y crecer igual que el backend.
+
+**Opciones evaluadas:** (a) React + Vite · (b) Vue · (c) **Angular** ·
+(d) HTML/CSS/JS puro (delegado a v4).
+
+| Criterio | React | Vue | Angular | Vanilla |
+|---|---|---|---|---|
+| Proyecto de aula institucional | menos común | menos común | **estándar universitario** | no marco |
+| Router + guards + Http por defecto | requiere paquetes | requiere paquetes | ✓ integrados | a mano |
+| Tipado de modelos | opcional (TS) | opcional (TS) | TypeScript por defecto | no |
+| Crecimiento hacia v3 (roles, JWT) y v4 (PWA) | posible | posible | ✓ | costoso |
+
+**Decisión: (c) Angular**, con Angular CLI, componentes *standalone* y
+`HttpClient`. Se usa **desde la v1** y el dashboard existe desde el primer
+día; las versiones siguientes solo lo amplían.
+
+**Consecuencias.** (+) Un patrón estable para todas las versiones. (+)
+Router y guards ya disponibles para v3. (−) Curva inicial mayor que vanilla,
+mitigada por el andamiaje del CLI.
+
+## D14 — Dashboard desde la v1 (no en v4)
+
+**Alternativa descartada:** el dashboard solo en v4 (como decían las specs
+anteriores, centradas únicamente en backend).
+
+**Decisión:** en v1 el dashboard ya muestra las métricas de los 7 catálogos
+(tarjetas con `total` por tabla) y el menú de navegación. La v4 lo amplía
+con gráficos, pero la página existe desde el inicio.
+
+**Por qué:** el frontend no se "agrega" en v4: se construye incrementalmente
+igual que la API. Tener dashboard en v1 obliga a que el frontend consuma los
+mismos contratos desde el primer día (criterio 6 de `2_spec.md`).
+
+## D15 — CORS habilitado en la API para el origen del Frontend
+
+**Contexto.** El navegador bloquea lecturas cross-origin: el dashboard
+(`http://localhost:8037`) llamaría a la API (`http://localhost:8036`) y se
+encontraría con CORS.
+
+**Opciones evaluadas:** (a) servir el frontend desde la misma API (misma
+origina) · (b) proxy de Angular (`ng serve --proxy-config`) ·
+(c) CORS en la API para el origen del frontend.
+
+**Decisión: (c).** La API registra la política CORS permitiendo
+`http://localhost:8037` (configurable por `appsettings.json`).
+
+**Por qué:** mantiene los dos componentes desacoplados (dos carpetas y dos
+puertos independientes dentro del monorepo), no oculta las peticiones tras un
+proxy, y el origen permitido queda explícito en la configuración. En v4
+(publicación) el origen del servidor se agrega a la misma política.
 
