@@ -1,0 +1,57 @@
+.dashboard {
+  padding: 1.25rem;
+}
+
+.encabezado h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.4rem;
+}
+
+.encabezado p {
+  margin: 0 0 1rem;
+  color: #5a6b7c;
+}
+
+.estado-carga {
+  color: #5a6b7c;
+}
+
+.cuadricula {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border: 1px solid #d4dce4;
+  border-radius: 10px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tarjeta:hover {
+  box-shadow: 0 6px 18px rgba(15, 42, 67, 0.15);
+  transform: translateY(-2px);
+}
+
+.nombre {
+  font-weight: 600;
+  color: #0f2a43;
+}
+
+.total {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2d6a9f;
+}
+
+.sin-api {
+  font-size: 0.85rem;
+  color: #a33;
+}
