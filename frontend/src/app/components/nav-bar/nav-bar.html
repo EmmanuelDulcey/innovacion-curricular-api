@@ -1,0 +1,7 @@
+<nav class="nav-bar">
+  <span class="marca">Innovación Curricular</span>
+  <a routerLink="/" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+  @for (tabla of tablas; track tabla) {
+    <a [routerLink]="['/tablas', tabla]" routerLinkActive="activo">{{ nombreLegible(tabla) }}</a>
+  }
+</nav>

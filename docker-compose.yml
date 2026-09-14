@@ -1,0 +1,66 @@
+# =============================================================================
+# docker-compose.yml — Versión 1: un solo comando
+#
+#   docker compose up -d --build        -> levanta los 4 servicios
+#   docker compose down -v              -> borra el volumen (BD desde cero)
+#
+# Cuatro servicios (fuente: 7_quickstart.md §3):
+#   1. sqlserver        (SQL Server 2022, puerto 11467, volumen mssqldata)
+#   2. sqlserver-init   (corre db/init.sh UNA vez y termina)
+#   3. api-innovacion   (API ASP.NET Core, puerto 8036)
+#   4. frontend         (Angular ng serve, puerto 8037)
+# =============================================================================
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-InnovacionCurricular123!}
+    ports:
+      - "11467:1433"
+    volumes:
+      - mssqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" -b"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver-init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-InnovacionCurricular123!}
+    volumes:
+      - ./db:/scripts
+    entrypoint: ["/bin/bash", "/scripts/init.sh"]
+    restart: "no"
+
+  api-innovacion:
+    build: ./api_innovacion
+    container_name: api-innovacion
+    environment:
+      ASPNETCORE_URLS: "http://+:8036"
+      ConnectionStrings__SqlServer: "Server=sqlserver,1433;Database=innovacion_curricular;User Id=sa;Password=${MSSQL_SA_PASSWORD:-InnovacionCurricular123!};TrustServerCertificate=True;Encrypt=False"
+    ports:
+      - "8036:8036"
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "8037:8037"
+    depends_on:
+      - api-innovacion
+
+volumes:
+  mssqldata:

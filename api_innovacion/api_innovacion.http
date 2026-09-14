@@ -1,0 +1,6 @@
+@api_innovacion_HostAddress = http://localhost:5177
+
+GET {{api_innovacion_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

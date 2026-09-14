@@ -1,0 +1,102 @@
+<section class="catalogo">
+  <header class="cabecera">
+    <h1>{{ config()?.nombreLegible ?? tabla() }}</h1>
+    <div class="fila-acciones">
+      <input
+        type="search"
+        placeholder="Filtrar por texto..."
+        [ngModel]="filtro()"
+        (ngModelChange)="filtro.set($event)"
+        class="filtro"
+      />
+      @if (config()) {
+        <button class="btn-crear" (click)="abrirCrear()">+ Crear</button>
+      }
+    </div>
+  </header>
+
+  <app-mensaje-error [error]="error()" />
+
+  @if (!config()) {
+    <p class="vacio">El catálogo "{{ tabla() }}" aún no está disponible en esta entrega.</p>
+  } @else if (error() && registros().length === 0 && !cargando()) {
+    <p class="vacio">No se pudieron cargar los registros.</p>
+  } @else if (cargando()) {
+    <p class="vacio">Cargando registros...</p>
+  } @else if (registros().length === 0) {
+    <p class="vacio">No hay registros.</p>
+  } @else {
+    <div class="tabla-contenedor">
+      <table>
+        <thead>
+          <tr>
+            @for (campo of config()!.campos; track campo.campo) {
+              <th>{{ campo.etiqueta }}</th>
+            }
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (fila of registrosFiltrados(); track fila[config()!.llave]) {
+            <tr>
+              @for (campo of config()!.campos; track campo.campo) {
+                <td>{{ fila[campo.campo] }}</td>
+              }
+              <td>
+                <span class="estado" [class.inactivo]="fila['activo'] === false">
+                  {{ fila['activo'] === false ? 'inactivo' : 'activo' }}
+                </span>
+              </td>
+              <td class="acciones">
+                <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
+                <button class="btn-eliminar" (click)="eliminar(fila)">Eliminar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (mostrarFormulario() && config(); as cfg) {
+    <div class="formulario">
+      <h2>{{ editando()!.esEdicion ? 'Editar' : 'Crear' }} registro</h2>
+      <p class="nota">
+        La llave (<code>{{ cfg.llave }}</code>) solo se asigna al crear; no se edita después.
+      </p>
+
+      <app-mensaje-error [error]="errorForm()" />
+
+      <form (ngSubmit)="guardar()">
+        @for (campo of cfg.campos; track campo.campo) {
+          <div class="campo">
+            <label>
+              {{ campo.etiqueta }}
+              @if (campo.requerido) {
+                <span class="req">*</span>
+              }
+            </label>
+            <input
+              [type]="campo.tipo === 'entero' ? 'number' : 'text'"
+              [name]="campo.campo"
+              [(ngModel)]="forma[campo.campo]"
+              [readonly]="esSoloLectura(campo)"
+              step="1"
+            />
+            @if (erroresPorCampo()[campo.campo]) {
+              <span class="error-campo">{{ erroresPorCampo()[campo.campo] }}</span>
+            }
+          </div>
+        }
+
+        <div class="acciones-form">
+          <button type="submit" class="btn-guardar">
+            {{ editando()!.esEdicion ? 'Guardar' : 'Crear' }}
+          </button>
+          <button type="button" class="btn-cancelar" (click)="cerrarFormulario()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  }
+</section>

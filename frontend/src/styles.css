@@ -1,0 +1,42 @@
+/* Estilos globales de la v1 (paleta consistente con nav-bar y catalogo). */
+:root {
+  --azul-oscuro: #0f2a43;
+  --azul-medio: #2d6a9f;
+  --gris-texto: #3d4a57;
+  --gris-suave: #5a6b7c;
+  --borde: #d4dce4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--gris-texto);
+  background: #f6f8fa;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--azul-oscuro);
+}
+
+a {
+  color: var(--azul-medio);
+}
+
+code {
+  background: #eceff2;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}

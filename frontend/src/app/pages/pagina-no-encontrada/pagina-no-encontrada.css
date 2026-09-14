@@ -1,0 +1,13 @@
+.no-encontrada {
+  padding: 3rem 1.25rem;
+  text-align: center;
+}
+
+.no-encontrada h1 {
+  color: #0f2a43;
+}
+
+.no-encontrada a {
+  color: #2d6a9f;
+  font-weight: 600;
+}
