@@ -1,0 +1,27 @@
+<section class="dashboard">
+  <header class="encabezado">
+    <h1>Módulo Innovación Curricular</h1>
+    <p>Total de registros activos por catálogo</p>
+  </header>
+
+  @if (cargando()) {
+    <p class="estado-carga">Cargando métricas...</p>
+  } @else {
+    <div class="cuadricula">
+      @for (tarjeta of tarjetas(); track tarjeta.tabla) {
+        <a class="tarjeta" [routerLink]="['/tablas', tarjeta.tabla]">
+          <span class="nombre">{{ tarjeta.nombre }}</span>
+          <span class="total">
+            @if (tarjeta.sinApi) {
+              <span class="sin-api">API no disponible</span>
+            } @else if (tarjeta.error) {
+              <span class="sin-api">Error al cargar</span>
+            } @else {
+              {{ tarjeta.total }}
+            }
+          </span>
+        </a>
+      }
+    </div>
+  }
+</section>

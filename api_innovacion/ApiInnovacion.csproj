@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RollForward>Major</RollForward>
+    <RootNamespace>ApiInnovacion</RootNamespace>
+    <AssemblyName>ApiInnovacion</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.0" />
+  </ItemGroup>
+
+  <!--
+    El proyecto de pruebas es un proyecto de consola aparte (criterio 5 de
+    2_spec.md §5). Se excluye del proyecto web para que solo se compile con
+    dotnet run dentro de la carpeta pruebas.
+  -->
+  <ItemGroup>
+    <Compile Remove="pruebas\**" />
+    <EmbeddedResource Remove="pruebas\**" />
+    <None Remove="pruebas\**" />
+    <Content Remove="pruebas\**" />
+  </ItemGroup>
+
+</Project>

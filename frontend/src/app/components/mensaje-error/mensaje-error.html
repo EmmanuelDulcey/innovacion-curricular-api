@@ -1,0 +1,17 @@
+@if (error()) {
+  <div class="mensaje-error">
+    <p class="texto"><strong>{{ error()!.mensaje }}</strong></p>
+
+    @if (erroresPorCampo().length > 0) {
+      <ul class="lista">
+        @for (mensaje of erroresPorCampo(); track mensaje) {
+          <li>{{ mensaje }}</li>
+        }
+      </ul>
+    }
+
+    @if (detalle()) {
+      <p class="detalle">{{ detalle() }}</p>
+    }
+  </div>
+}
