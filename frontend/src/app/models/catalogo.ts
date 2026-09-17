@@ -5,6 +5,8 @@
 // configuracion generica que usa la pagina /tablas/:tabla para armar columnas
 // y formularios con las reglas de 6_contracts.md §8.
 // Issue 1 (Emmanuel): area_conocimiento y universidad.
+// Issue 2 (Felipe): aspecto_normativo, practica_estrategia y enfoque.
+// Issue 3 (Valentina): car_innovacion y aliado.
 // =============================================================================
 
 // --- Contratos auxiliares (9_frontend.md §4) -------------------------------
@@ -62,13 +64,34 @@ export interface Enfoque {
   activo: boolean;
 }
 
+export interface CarInnovacion {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  tipo: string;
+  activo: boolean;
+}
+
+// `aliado` es la única tabla cuya llave es `nit` y no `id` (9_frontend.md §4).
+export interface Aliado {
+  nit: number;
+  razonSocial: string;
+  nombreContacto: string;
+  correo: string;
+  telefono: string;
+  ciudad: string;
+  activo: boolean;
+}
+
 export type CualquierRegistro = Record<string, any>;
 
 // --- Configuracion generica de la pagina catalogo ---------------------------
 export interface CampoConfig {
   campo: string;        // clave en snake_case (la misma que usa la API)
   etiqueta: string;     // nombre legible para la interfaz (español)
-  tipo: 'texto' | 'entero';
+  // 'correo' se comporta como 'texto' pero ademas valida formato de correo
+  // antes de enviar (lo exige el formulario de `aliado`, issue #3 punto 8).
+  tipo: 'texto' | 'entero' | 'correo';
   requerido: boolean;
   editable: boolean;    // false para la llave: obligatoria al crear, solo lectura al editar
   maximo: number | null;
@@ -94,7 +117,8 @@ export const TABLAS: string[] = [
 ];
 
 // Configuracion por tabla. Los catalogos de Felipe siguen el mismo formulario
-// generico y los contratos de 6_contracts.md §8.3–8.5.
+// generico y los contratos de 6_contracts.md §8.3–8.5. Los de Valentina
+// (car_innovacion y aliado) usan el mismo formulario con los contratos §8.6–8.7.
 export const CATALOGOS: Record<string, TablaConfig> = {
   area_conocimiento: {
     nombre: 'area_conocimiento',
@@ -148,6 +172,33 @@ export const CATALOGOS: Record<string, TablaConfig> = {
       { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+    ],
+  },
+  car_innovacion: {
+    nombre: 'car_innovacion',
+    nombreLegible: 'Característica de innovación',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      // En la base es VARCHAR(MAX): obligatoria pero sin máximo por la API
+      // (6_contracts.md §8.6), por eso maximo va en null.
+      { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: null },
+      { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+    ],
+  },
+  aliado: {
+    nombre: 'aliado',
+    nombreLegible: 'Aliado',
+    // Única tabla de la v1 cuya llave es `nit` y no `id` (6_contracts.md §0.2).
+    llave: 'nit',
+    campos: [
+      { campo: 'nit', etiqueta: 'NIT', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'razon_social', etiqueta: 'Razón social', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
+      { campo: 'nombre_contacto', etiqueta: 'Nombre de contacto', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
+      { campo: 'correo', etiqueta: 'Correo', tipo: 'correo', requerido: true, editable: true, maximo: 70 },
+      { campo: 'telefono', etiqueta: 'Teléfono', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'ciudad', etiqueta: 'Ciudad', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
     ],
   },
 };
