@@ -1,9 +1,9 @@
-# Plan técnico — Versión 1: catálogos base (7 tablas sin FK) + SQL Server (C#/ASP.NET Core)
+# Plan técnico — Versión 1: API (7 tablas sin FK) + Frontend Angular
 
 > **Versión 1** · CÓMO construir lo especificado en [2_spec.md](2_spec.md).
 > El porqué de cada decisión: [4_research.md](4_research.md) · el modelo
 > de datos: [5_data_model.md](5_data_model.md) · contratos exactos:
-> `6_contracts.md` · orden de trabajo: `8_tasks.md`.
+> `6_contracts.md` · interfaz: `9_frontend.md` · orden de trabajo: `8_tasks.md`.
 
 ---
 
@@ -17,6 +17,8 @@
 | Motor | **SQL Server 2022** (contenedor oficial) | Único motor de esta versión |
 | Ejecución de la API en el contenedor | `dotnet run` | Arranque directo y predecible; sin recompilación en caliente |
 | Base de datos | `innovacion_curricular` (script provisto, 25 tablas; esta versión solo nombra 7) | La BD viene dada completa |
+| Frontend | **Angular** (TypeScript) con Angular CLI, componentes *standalone* y `HttpClient` | SPA desde la v1; consume la API en `http://localhost:8036` (CORS) |
+| Ejecución del Frontend en el contenedor | `ng serve --host 0.0.0.0 --port 8037` | Recarga en caliente del ciclo de estudio, equivalente a `dotnet watch` |
 
 ## 2. Estructura de carpetas
 
@@ -28,36 +30,57 @@ sus propias peticiones — sin una capa genérica compartida entre ellas.
 
 ```
 (raíz del proyecto)
-├── docker-compose.yml                    # UN comando: sqlserver + init + api
+├── docker-compose.yml                    # UN comando: sqlserver + init + api + frontend
 ├── db/
 │   ├── innovacion_curricular.ss.sql      # la BD completa, PROVISTA (se copia, no se genera)
 │   ├── 01_activar_borrado_logico.sql     # agrega la columna `activo` a las 7 tablas de esta versión
 │   ├── 02_datos_iniciales.sql            # carga los registros base de `area_conocimiento` y `universidad`
 │   └── init.sh                           # corre los tres scripts, en orden, la primera vez
-└── api_innovacion/
-    ├── ApiInnovacion.csproj              # el proyecto .NET (paquetes: SqlClient, Dapper, Swashbuckle)
-    ├── Program.cs                        # punto de entrada: ENSAMBLADOR (DI) + 422 + rutas
-    ├── appsettings.json                  # cadena de conexión (default localhost:11467)
-    ├── Dockerfile                        # sdk:10.0 + dotnet run (puerto 8036)
-    ├── Modelos/
-    │   └── <Tabla>.cs                    # la ENTIDAD: propiedades tipadas + Activo
-    ├── Peticiones/
-    │   ├── <Tabla>Crear.cs               # petición del POST (todo obligatorio, incluida la PK)
-    │   ├── <Tabla>Reemplazo.cs           # petición del PUT (todo obligatorio, sin la PK)
-    │   └── <Tabla>Actualizar.cs          # petición del PATCH (todo opcional)
-    ├── Controllers/
-    │   └── <Tabla>Controller.cs          # HTTP: atributos de verbo, try/catch → códigos
-    ├── Servicios/
-    │   ├── IServicio<Tabla>.cs           # interface del servicio
-    │   └── Servicio<Tabla>.cs            # reglas de negocio; recibe IRepositorio<Tabla>
-    ├── Repositorios/
-    │   ├── IRepositorio<Tabla>.cs        # interface: 5 métodos de datos (async)
-    │   └── Repositorio<Tabla>SqlServer.cs   # Dapper + SQL a mano parametrizado
-    ├── Excepciones/
-    │   └── NoEncontradoExcepcion.cs      # la excepción de negocio que el controller vuelve 404
-    └── pruebas/
-        ├── PruebaCapas.csproj            # proyecto de consola aparte (criterio 5)
-        └── Programa.cs                   # un servicio con un repositorio falso, sin BD
+├── api_innovacion/
+│   ├── ApiInnovacion.csproj              # el proyecto .NET (paquetes: SqlClient, Dapper, Swashbuckle)
+│   ├── Program.cs                        # punto de entrada: ENSAMBLADOR (DI) + 422 + CORS + rutas
+│   ├── appsettings.json                  # cadena de conexión (default localhost:11467)
+│   ├── Dockerfile                        # sdk:10.0 + dotnet run (puerto 8036)
+│   ├── Modelos/
+│   │   └── <Tabla>.cs                    # la ENTIDAD: propiedades tipadas + Activo
+│   ├── Peticiones/
+│   │   ├── <Tabla>Crear.cs               # petición del POST (todo obligatorio, incluida la PK)
+│   │   ├── <Tabla>Reemplazo.cs           # petición del PUT (todo obligatorio, sin la PK)
+│   │   └── <Tabla>Actualizar.cs          # petición del PATCH (todo opcional)
+│   ├── Controllers/
+│   │   └── <Tabla>Controller.cs          # HTTP: atributos de verbo, try/catch → códigos
+│   ├── Servicios/
+│   │   ├── IServicio<Tabla>.cs           # interface del servicio
+│   │   └── Servicio<Tabla>.cs            # reglas de negocio; recibe IRepositorio<Tabla>
+│   ├── Repositorios/
+│   │   ├── IRepositorio<Tabla>.cs        # interface: 5 métodos de datos (async)
+│   │   └── Repositorio<Tabla>SqlServer.cs   # Dapper + SQL a mano parametrizado
+│   ├── Excepciones/
+│   │   └── NoEncontradoExcepcion.cs      # la excepción de negocio que el controller vuelve 404
+│   └── pruebas/
+│       ├── PruebaCapas.csproj            # proyecto de consola aparte (criterio 5)
+│       └── Programa.cs                   # un servicio con un repositorio falso, sin BD
+└── frontend/
+    ├── package.json · angular.json · tsconfig.json
+    ├── Dockerfile                        # node: ng serve (puerto 8037)
+    └── src/
+        ├── main.ts
+        ├── styles.css
+        ├── environments/
+        │   └── environment.ts            # apiUrl = http://localhost:8036
+        └── app/
+            ├── app.config.ts             # providers: Router + HttpClient
+            ├── app.routes.ts             # / (dashboard) y /tablas/:tabla (CRUD)
+            ├── models/
+            │   └── catalogo.ts           # interfaces por tabla (camelCase)
+            ├── services/
+            │   └── api.service.ts        # HttpClient → contratos de 6_contracts.md
+            ├── components/
+            │   ├── nav-bar/              # menú: dashboard + 7 tablas
+            │   └── mensaje-error/        # despliegue uniforme de errores (RF10)
+            └── pages/
+                ├── dashboard/            # tarjetas con totales por tabla (RF8)
+                └── catalogo/             # listado + formulario (crear/editar) (RF9)
 ```
 
 `<Tabla>` se reemplaza por cada una de las siete entidades:
@@ -195,9 +218,35 @@ falle ni duplique datos.
 
 ## 5. Docker: un solo comando
 
-`docker compose up -d --build` deja funcionando tres servicios:
+`docker compose up -d --build` deja funcionando cuatro servicios:
 `sqlserver` (puerto 11467), `sqlserver-init` (corre los scripts de `db/`
-una sola vez) y `api-innovacion` (puerto 8036). La API corre con
-`dotnet run` dentro del contenedor: cada cambio de código requiere
-reconstruir la imagen, pero se evita el comportamiento a veces inestable
-de la recarga en caliente durante la ejecución.
+una sola vez), `api-innovacion` (puerto 8036) y `frontend` (puerto 8037).
+La API corre con `dotnet run` dentro del contenedor; el Frontend con
+`ng serve`. Cada cambio de código requiere reconstruir la imagen, pero se
+evita el comportamiento a veces inestable de la recarga en caliente durante
+la ejecución.
+
+- La API habilita **CORS** para el origen del Frontend (`http://localhost:8037`)
+  y expone `GET /api/*`, `GET /`.
+- El servicio `frontend` depende de que la API esté levantada
+  (`depends_on: api-innovacion`); Swagger y el dashboard comparten la misma versión.
+
+## 6. Frontend Angular — diseño de la interfaz
+
+La especificación de páginas, rutas, componentes y flujo de datos vive en
+[9_frontend.md](9_frontend.md). Dejando el detalle aparte, las decisiones
+técnicas del Frontend en v1 son:
+
+- **Una sola página de CRUD reutilizada** (`pages/catalogo`): recibe el
+  nombre de la tabla por ruta, configura sus columnas y campos a partir de
+  la tabla de validaciones de `6_contracts.md` §8, y usa el mismo
+  `api.service` para los cinco verbos.
+- **Modelos camelCase en TypeScript** que mapean el snake_case de la API
+  (`gran_area` → `granArea`, `razon_social` → `razonSocial`).
+- **El listado consume la envoltura** `{tabla, limite, total, datos}`; el
+  total de cada tarjeta del dashboard es el `total` del mismo endpoint.
+- **Errores:** `api.service` traduce el JSON de error en una estructura
+  tipada; la página muestra `errores[]` (422) junto al campo, `404` como
+  "registro no encontrado" y `500` como error del servidor.
+- **Sin autenticación en v1**: todos los consumos son públicos; el
+  `token`/guardias de ruta llegan en v3.

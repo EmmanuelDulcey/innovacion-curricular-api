@@ -1,0 +1,36 @@
+.nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.25rem;
+  background: #0f2a43;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.marca {
+  font-weight: 700;
+  margin-right: 1rem;
+  font-size: 1rem;
+}
+
+.nav-bar a {
+  color: #dbe7f3;
+  text-decoration: none;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.nav-bar a:hover {
+  background: #1e4a75;
+}
+
+.nav-bar a.activo {
+  background: #2d6a9f;
+  color: #fff;
+  font-weight: 600;
+}
