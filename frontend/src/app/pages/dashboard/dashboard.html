@@ -14,6 +14,8 @@
           <span class="total">
             @if (tarjeta.sinApi) {
               <span class="sin-api">API no disponible</span>
+            } @else if (tarjeta.error) {
+              <span class="sin-api">Error al cargar</span>
             } @else {
               {{ tarjeta.total }}
             }

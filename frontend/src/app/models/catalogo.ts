@@ -39,6 +39,29 @@ export interface Universidad {
   activo: boolean;
 }
 
+export interface AspectoNormativo {
+  id: number;
+  tipo: string;
+  descripcion: string;
+  fuente: string;
+  activo: boolean;
+}
+
+export interface PracticaEstrategia {
+  id: number;
+  tipo: string;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+}
+
+export interface Enfoque {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+}
+
 export type CualquierRegistro = Record<string, any>;
 
 // --- Configuracion generica de la pagina catalogo ---------------------------
@@ -70,8 +93,8 @@ export const TABLAS: string[] = [
   'aliado',
 ];
 
-// Configuracion por tabla. Por ahora solo Area de conocimiento y Universidad
-// (Issue 1); los demas catalogos se agregan en los issues 2 y 3.
+// Configuracion por tabla. Los catalogos de Felipe siguen el mismo formulario
+// generico y los contratos de 6_contracts.md §8.3–8.5.
 export const CATALOGOS: Record<string, TablaConfig> = {
   area_conocimiento: {
     nombre: 'area_conocimiento',
@@ -93,6 +116,38 @@ export const CATALOGOS: Record<string, TablaConfig> = {
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
       { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'ciudad', etiqueta: 'Ciudad', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+    ],
+  },
+  aspecto_normativo: {
+    nombre: 'aspecto_normativo',
+    nombreLegible: 'Aspecto normativo',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'fuente', etiqueta: 'Fuente', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+    ],
+  },
+  practica_estrategia: {
+    nombre: 'practica_estrategia',
+    nombreLegible: 'Práctica o estrategia',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+    ],
+  },
+  enfoque: {
+    nombre: 'enfoque',
+    nombreLegible: 'Enfoque',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
     ],
   },
 };

@@ -9,6 +9,15 @@
         (ngModelChange)="filtro.set($event)"
         class="filtro"
       />
+      <label class="limite">
+        Límite
+        <input
+          type="number"
+          min="1"
+          [ngModel]="limite()"
+          (ngModelChange)="cambiarLimite($event)"
+        />
+      </label>
       @if (config()) {
         <button class="btn-crear" (click)="abrirCrear()">+ Crear</button>
       }

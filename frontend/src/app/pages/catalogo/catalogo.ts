@@ -1,4 +1,4 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, effect, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { lastValueFrom } from 'rxjs';
 import { ApiService } from '../../services/api.service';
@@ -30,6 +30,7 @@ export class Catalogo {
   readonly cargando = signal(false);
   readonly error = signal<ApiError | null>(null);
   readonly filtro = signal('');
+  readonly limite = signal(1000);
 
   // Estado del formulario (crear/editar).
   readonly editando = signal<{ fila: CualquierRegistro; esEdicion: boolean } | null>(null);
@@ -39,6 +40,20 @@ export class Catalogo {
 
   // Modelo del formulario: objeto plano con las claves snake_case del campo.
   readonly forma: Record<string, any> = {};
+  private cargaVersion = 0;
+
+  // La misma instancia de la página se reutiliza al cambiar :tabla. El efecto
+  // reinicia el estado y carga el catálogo nuevo sin dejar datos de la ruta
+  // anterior ni permitir que una respuesta tardía lo sobrescriba.
+  private readonly recargarAlCambiarTabla = effect(() => {
+    const tabla = this.tabla();
+    if (!tabla) return;
+
+    const version = ++this.cargaVersion;
+    this.cerrarFormulario();
+    this.filtro.set('');
+    void this.cargar(version);
+  });
 
   readonly registrosFiltrados = computed(() => {
     const termino = this.filtro().trim().toLowerCase();
@@ -51,20 +66,30 @@ export class Catalogo {
 
   constructor(private readonly api: ApiService) {}
 
-  async cargar() {
+  async cargar(version = this.cargaVersion) {
     const cfg = this.config();
     if (!cfg) return;
 
     this.cargando.set(true);
     this.error.set(null);
     try {
-      const data = await lastValueFrom(this.api.listar<CualquierRegistro>(cfg.nombre, 1000));
-      this.registros.set(data?.datos ?? []);
+      const data = await lastValueFrom(this.api.listar<CualquierRegistro>(cfg.nombre, this.limite()));
+      if (version === this.cargaVersion) this.registros.set(data?.datos ?? []);
     } catch (error) {
-      this.error.set(error as ApiError);
-      this.registros.set([]);
+      if (version === this.cargaVersion) {
+        this.error.set(error as ApiError);
+        this.registros.set([]);
+      }
     } finally {
-      this.cargando.set(false);
+      if (version === this.cargaVersion) this.cargando.set(false);
+    }
+  }
+
+  cambiarLimite(valor: unknown) {
+    const limite = Number(valor);
+    if (Number.isInteger(limite) && limite > 0) {
+      this.limite.set(limite);
+      void this.cargar();
     }
   }
 

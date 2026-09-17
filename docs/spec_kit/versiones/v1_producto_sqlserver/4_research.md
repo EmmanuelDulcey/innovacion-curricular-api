@@ -220,4 +220,3 @@ origina) · (b) proxy de Angular (`ng serve --proxy-config`) ·
 puertos independientes dentro del monorepo), no oculta las peticiones tras un
 proxy, y el origen permitido queda explícito en la configuración. En v4
 (publicación) el origen del servidor se agrega a la misma política.
-

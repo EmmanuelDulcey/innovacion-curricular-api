@@ -431,7 +431,10 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+# IDE settings
+.idea/
+
 # Angular (frontend)
 frontend/dist/
 frontend/.angular/
-frontend/\.npm/
+frontend/.npm/

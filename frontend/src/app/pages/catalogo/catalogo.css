@@ -23,6 +23,18 @@
   font-size: 0.9rem;
 }
 
+.limite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #5a6b7c;
+  white-space: nowrap;
+}
+
+.limite input {
+  width: 5rem;
+}
+
 .btn-crear {
   padding: 0.5rem 1rem;
   background: #2d6a9f;

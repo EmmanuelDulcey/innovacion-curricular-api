@@ -4,8 +4,6 @@
 > Estos contratos definen los verbos HTTP, rutas, códigos de respuesta y formatos exactos que debe cumplir la API de Innovación Curricular en esta versión.
 >
 > La v1 expone el CRUD completo de las siete tablas sin llave foránea y un endpoint de diagnóstico. La documentación interactiva está disponible mediante Swagger.
->
-> **Consumo desde el Frontend:** estos mismos contratos los consume la aplicación Angular de la v1 ([9_frontend.md](9_frontend.md)) desde `http://localhost:8037`. La API habilita CORS para ese origen.
 
 ---
 

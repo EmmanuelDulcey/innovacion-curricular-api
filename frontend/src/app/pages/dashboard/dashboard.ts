@@ -10,6 +10,7 @@ interface Tarjeta {
   nombre: string;
   total: number;
   sinApi: boolean;
+  error: boolean;
 }
 
 // Tarjetas en cuadricula por tabla con su `total` (9_frontend.md §8).
@@ -37,6 +38,7 @@ export class Dashboard implements OnInit {
           nombre: nombreLegible(tabla),
           total: data?.total ?? 0,
           sinApi: false,
+          error: false,
         })),
         catchError((error: ApiError) =>
           of({
@@ -44,6 +46,7 @@ export class Dashboard implements OnInit {
             nombre: nombreLegible(tabla),
             total: 0,
             sinApi: error.estado === 0, // sin conexion con la API
+            error: error.estado !== 0,
           }),
         ),
       ),

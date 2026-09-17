@@ -1,7 +1,7 @@
 # Tareas — Versión 1: catálogos base (7 tablas sin FK) + SQL Server (C#/ASP.NET Core)
 
-> **Versión 1 (API + Frontend)** · El orden de construcción, partiendo de CERO. Cada fase termina en algo verificable.
-> Requisitos: `2_spec.md` · técnica: `3_plan.md` · contratos: `6_contracts.md` · interfaz: `9_frontend.md` · validación final: `7_quickstart.md`.
+> **Versión 1** · El orden de construcción, partiendo de CERO. Cada fase termina en algo verificable.
+> Requisitos: `2_spec.md` · técnica: `3_plan.md` · contratos: `6_contracts.md` · validación final: `7_quickstart.md`.
 
 ## Fase 0 — Base de datos y esqueleto
 
@@ -39,49 +39,17 @@
 ## Fase 5 — Controller y Program.cs
 
 * `Controllers/<Tabla>Controller.cs`: ruta base `[Route("api/{tabla}")]`, los 6 métodos HTTP con sus atributos de verbo, try/catch estricto traduciendo excepciones a códigos HTTP, y respuesta 204 para listas vacías[cite: 1].
-* `Program.cs`: el ensamblador de dependencias (`AddScoped`), la personalización de la respuesta 422 para fallos de modelo (`InvalidModelStateResponseFactory` → `{estado, mensaje, errores}`), Swagger (`AddSwaggerGen` + `UseSwagger` + `UseSwaggerUI`), **la política CORS para el origen `http://localhost:8037`**, y el endpoint `GET /` de diagnóstico[cite: 1].
+* `Program.cs`: el ensamblador de dependencias (`AddScoped`), la personalización de la respuesta 422 para fallos de modelo (`InvalidModelStateResponseFactory` → `{estado, mensaje, errores}`), Swagger (`AddSwaggerGen` + `UseSwagger` + `UseSwaggerUI`), y el endpoint `GET /` de diagnóstico[cite: 1].
 * **Verificar:** con la BD arriba probar listar `area_conocimiento` (200 con 218 registros y con `?limite=3`), consultar por ID (200 o 404), POST inválido (422 con array de errores), y el contraste PUT vs PATCH[cite: 1].
 
 ## Fase 6 — Docker: un solo comando
 
 * `Dockerfile` (en la carpeta de la API): imagen basada en el SDK de .NET, ejecutando `dotnet watch`, con la variable `ASPNETCORE_URLS` configurada en el puerto 8036[cite: 1].
-* Actualizar el `docker-compose.yml` incorporando el servicio `api-innovacion`: puerto expuesto 8036, variable de entorno `ConnectionStrings__SqlServer` apuntando al host interno `sqlserver,1433`, y el `depends_on` configurado sobre `sqlserver-init` con `condition: service_completed_successfully`. *(El servicio `frontend` se incorpora en la Fase 11.)*[cite: 1].
+* Actualizar el `docker-compose.yml` incorporando el servicio `api-innovacion`: puerto expuesto 8036, variable de entorno `ConnectionStrings__SqlServer` apuntando al host interno `sqlserver,1433`, y el `depends_on` configurado sobre `sqlserver-init` con `condition: service_completed_successfully`[cite: 1].
 * **Verificar:** `docker compose down` seguido de `docker compose up -d --build` deja la BD y la API operativas con un solo comando[cite: 1].
 
-## Fase 7 — Frontend: andamio Angular
+## Fase 7 — Cierre de la versión
 
-* Crear el proyecto con `ng new frontend` (routing incluido, estilos CSS plano, componentes standalone) y eliminar el contenido de ejemplo.
-* En `package.json`, configurar `start` como `ng serve --host 0.0.0.0 --port 8037` (puerto del Frontend, Artículo 8).
-* `src/environments/environment.ts` con `apiUrl: 'http://localhost:8036'`; `app.routes.ts` con las rutas base (`/` → dashboard, `/tablas/:tabla` → catálogo)[cite: 1].
-* **Verificar:** `npm start` compila sin errores y `http://localhost:8037` responde HTML.
-
-## Fase 8 — Frontend: modelos y servicio de la API
-
-* `src/app/models/catalogo.ts`: interfaces en camelCase por tabla (mapeando el snake_case de `6_contracts.md`) más `RespuestaLista` con `{ tabla, limite, total, datos }` y `ApiError` con `{ estado, mensaje, detalle, errores? }`[cite: 1].
-* `src/app/services/api.service.ts`: métodos `listar(tabla, limite?)`, `obtener(tabla, id)`, `crear`, `reemplazar`, `actualizar`, `eliminar` usando `HttpClient` contra `apiUrl`; manejo de 200/204/400/404/422/500[cite: 1].
-* **Verificar:** `ng build` compila y, con la API levantada, `apiService.listar('area_conocimiento')` responde los 218 registros.
-
-## Fase 9 — Frontend: dashboard y navegación (RF8)
-
-* `components/nav-bar`: menú con "Dashboard" y un enlace por cada una de las 7 tablas.
-* `pages/dashboard`: consulta las 7 tablas en paralelo con `Promise.all` y muestra una tarjeta por tabla con su `total`[cite: 1].
-* **Verificar:** `http://localhost:8037/` muestra las 7 tarjetas; `area_conocimiento` = 218, `universidad` = 6 (API y CORS activos).
-
-## Fase 10 — Frontend: páginas CRUD (RF9 y RF10)
-
-* `pages/catalogo`: listado con columnas por tabla, botones **Crear**/**Editar**/**Eliminar** (con confirmación de borrado) y la tabla que se muestra obtenida de la ruta.
-* Formulario reutilizado que sigue las reglas de `6_contracts.md` §8; errores 422 mostrados por campo, 404 → "registro no encontrado", 500 → error del servidor, 204 → tabla vacía[cite: 1].
-* **Verificar:** desde `http://localhost:8037/tablas/aliado` se crea, edita y elimina un registro y el cambio persiste al recargar; un formulario inválido muestra los errores sin romper la interfaz.
-
-## Fase 11 — Frontend en Docker y un solo comando
-
-* `frontend/Dockerfile` (imagen node LTS) ejecutando `npm ci && npm start`; el `apiUrl` apunta a `http://localhost:8036`.
-* Actualizar `docker-compose.yml` con el servicio `frontend`: puerto 8037, `depends_on: api-innovacion`[cite: 1].
-* **Verificar:** `docker compose down` seguido de `docker compose up -d --build` deja los 4 servicios operativos y `http://localhost:8037` funciona de punta a punta (API + Frontend).
-
-## Fase 12 — Cierre de la versión
-
-* Ejecutar el *smoke test* completo descrito en `7_quickstart.md`: API (§8–12) y Frontend (§7, §16)[cite: 1].
-* Asegurar las reglas de control de versiones con `.gitignore` (excluyendo `bin/`, `obj/`, `frontend/node_modules/`) y `.gitattributes`[cite: 1].
-* Realizar el commit final y etiquetar el repositorio con el tag `v1`
-  (monorepo: backend y Frontend quedan en el mismo commit y comparten el tag)[cite: 1].
+* Ejecutar el *smoke test* completo descrito en `7_quickstart.md` §2[cite: 1].
+* Asegurar las reglas de control de versiones con `.gitignore` (excluyendo `bin/`, `obj/`) y `.gitattributes`[cite: 1].
+* Realizar el commit final y etiquetar el repositorio con el tag `v1`[cite: 1].

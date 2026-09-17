@@ -74,6 +74,18 @@ builder.Services.AddScoped<IRepositorioUniversidad>(
     _ => new RepositorioUniversidadSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioUniversidad, ServicioUniversidad>();
 
+builder.Services.AddScoped<IRepositorioEnfoque>(
+    _ => new RepositorioEnfoqueSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioEnfoque, ServicioEnfoque>();
+
+builder.Services.AddScoped<IRepositorioAspectoNormativo>(
+    _ => new RepositorioAspectoNormativoSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAspectoNormativo, ServicioAspectoNormativo>();
+
+builder.Services.AddScoped<IRepositorioPracticaEstrategia>(
+    _ => new RepositorioPracticaEstrategiaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioPracticaEstrategia, ServicioPracticaEstrategia>();
+
 var app = builder.Build();
 
 // -----------------------------------------------------------------------------
