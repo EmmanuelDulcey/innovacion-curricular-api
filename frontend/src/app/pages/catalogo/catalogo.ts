@@ -192,12 +192,26 @@ export class Catalogo {
           errores[campo.campo] = `El campo ${campo.campo} debe ser un entero positivo.`;
           continue;
         }
+        // El mensaje es el mismo que devuelve la API en el 422, para que el
+        // usuario vea el texto idéntico venga de donde venga la validación
+        // (6_contracts.md §4.7). La API sigue siendo la autoridad final.
+        if (campo.tipo === 'correo' && !this.esCorreo(texto)) {
+          errores[campo.campo] = `El campo ${campo.campo} debe tener un formato válido.`;
+          continue;
+        }
         if (campo.maximo !== null && texto.length > campo.maximo) {
           errores[campo.campo] = `El campo ${campo.campo} no puede superar los ${campo.maximo} caracteres.`;
         }
       }
     }
     return errores;
+  }
+
+  // Comprobacion de formato de correo previa al envio: exige algo@algo.algo
+  // sin espacios. La validacion definitiva la hace la API con [EmailAddress]
+  // (6_contracts.md §8.7); esta solo evita el viaje innecesario al servidor.
+  private esCorreo(texto: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(texto);
   }
 
   private asignarErroresPorCampo(mensajes: string[]) {

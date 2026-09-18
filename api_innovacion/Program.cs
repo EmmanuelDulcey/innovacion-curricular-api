@@ -3,6 +3,21 @@ using ApiInnovacion.Repositorios;
 using ApiInnovacion.Servicios;
 using Microsoft.AspNetCore.Mvc;
 
+// -----------------------------------------------------------------------------
+// Mapeo columna -> propiedad en Dapper.
+//
+// La base nombra las columnas en snake_case (gran_area, razon_social,
+// nombre_contacto...) y las entidades en C# usan PascalCase (GranArea,
+// RazonSocial, NombreContacto...). Sin esta linea Dapper solo compara nombres
+// ignorando mayusculas, asi que las columnas con guion bajo NO se mapean y
+// llegan como null al JSON de respuesta.
+//
+// La convencion se declara una sola vez, aqui en el ensamblador, porque es
+// global a todos los repositorios; el SQL de cada repositorio se mantiene tal
+// como lo muestra 3_plan.md, Seccion 4.5, sin alias por columna.
+// -----------------------------------------------------------------------------
+Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Cadena de conexion: appsettings.json (por defecto localhost,11467 para correr
@@ -85,6 +100,15 @@ builder.Services.AddScoped<IServicioAspectoNormativo, ServicioAspectoNormativo>(
 builder.Services.AddScoped<IRepositorioPracticaEstrategia>(
     _ => new RepositorioPracticaEstrategiaSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioPracticaEstrategia, ServicioPracticaEstrategia>();
+
+// Issue #3 - car_innovacion y aliado.
+builder.Services.AddScoped<IRepositorioCarInnovacion>(
+    _ => new RepositorioCarInnovacionSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioCarInnovacion, ServicioCarInnovacion>();
+
+builder.Services.AddScoped<IRepositorioAliado>(
+    _ => new RepositorioAliadoSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAliado, ServicioAliado>();
 
 var app = builder.Build();
 
