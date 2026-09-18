@@ -1,0 +1,17 @@
+# =============================================================================
+# .gitattributes — Normalizacion de finales de linea
+#
+# Los scripts .sh se ejecutan con bash DENTRO de contenedores Linux
+# (`sqlserver-init` corre db/init.sh). Si el archivo se descarga con CRLF,
+# bash falla con "$'\r': command not found" y la inicializacion de la BD
+# aborta antes de crear el esquema.
+#
+# Con core.autocrlf=true (el valor por defecto en Windows) el checkout
+# convierte LF -> CRLF. La regla eol=lf de este archivo tiene prioridad
+# sobre autocrlf y garantiza que los .sh viajen siempre con LF, sin
+# importar la configuracion de Git de cada estudiante.
+#
+# Fuente: 8_tasks.md Fase 7.
+# =============================================================================
+
+*.sh text eol=lf
