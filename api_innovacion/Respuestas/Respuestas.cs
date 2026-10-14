@@ -35,6 +35,24 @@ public class RespuestaExito
 }
 
 /// <summary>
+/// Exito de POST con la fila creada: {estado, mensaje, datos}. Es la envoltura de
+/// la v2 (desviacion documentada de la v1, donde el POST solo devolvia estado y
+/// mensaje): el cliente recibe de vuelta el registro recien guardado.
+/// Fuente: docs/spec_kit/versiones/v2/6_contracts.md §0.3 y §4.
+/// </summary>
+public class RespuestaCreacion<T>
+{
+    [JsonPropertyName("estado")]
+    public int Estado { get; set; }
+
+    [JsonPropertyName("mensaje")]
+    public string Mensaje { get; set; } = string.Empty;
+
+    [JsonPropertyName("datos")]
+    public T? Datos { get; set; }
+}
+
+/// <summary>
 /// Exito de PUT/PATCH: {estado, mensaje, filasAfectadas}. Fuente: 6_contracts.md §5-6.
 /// </summary>
 public class RespuestaFilasAfectadas
