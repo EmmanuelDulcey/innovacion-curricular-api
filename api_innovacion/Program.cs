@@ -20,9 +20,11 @@ Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Cadena de conexion: appsettings.json (por defecto localhost,11467 para correr
-// sin Docker) sobrescribible por variable de entorno ConnectionStrings__SqlServer.
-var cadenaConexion = builder.Configuration.GetConnectionString("SqlServer")
+// Cadena de conexion: variable de entorno DB_CONNECTION (la usa docker-compose) o,
+// si no esta, appsettings.json (por defecto localhost,11467 para correr sin Docker).
+// Tambien es sobrescribible por ConnectionStrings__SqlServer.
+var cadenaConexion = Environment.GetEnvironmentVariable("DB_CONNECTION")
+    ?? builder.Configuration.GetConnectionString("SqlServer")
     ?? throw new InvalidOperationException("ConnectionStrings:SqlServer no está configurada.");
 
 var origenFrontend = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:8037";
@@ -37,6 +39,11 @@ builder.Services
     .AddJsonOptions(opciones =>
     {
         opciones.JsonSerializerOptions.PropertyNamingPolicy = new SnakeCaseNamingPolicy();
+
+        // Las columnas DATE (fecha_fun, premio.fecha) se serializan como
+        // "yyyy-MM-dd", sin hora: lo que espera el <input type="date"> del frontend.
+        // Fuente: 6_contracts.md §0.4.
+        opciones.JsonSerializerOptions.Converters.Add(new SoloFechaJsonConverter());
     });
 
 // Respuesta 422 personalizada: body invalido -> {estado, mensaje, errores[...]}.
@@ -110,6 +117,19 @@ builder.Services.AddScoped<IRepositorioAliado>(
     _ => new RepositorioAliadoSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioAliado, ServicioAliado>();
 
+// Issue #1 (v2) - facultad, pasantia y premio (procedimientos almacenados).
+builder.Services.AddScoped<IRepositorioFacultad>(
+    _ => new RepositorioFacultadSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioFacultad, ServicioFacultad>();
+
+builder.Services.AddScoped<IRepositorioPasantia>(
+    _ => new RepositorioPasantiaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioPasantia, ServicioPasantia>();
+
+builder.Services.AddScoped<IRepositorioPremio>(
+    _ => new RepositorioPremioSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioPremio, ServicioPremio>();
+
 var app = builder.Build();
 
 // -----------------------------------------------------------------------------
@@ -131,8 +151,8 @@ app.MapControllers();
 app.MapGet("/", () => Results.Json(new RespuestaDiagnostico
 {
     Mensaje = "API Innovación Curricular funcionando",
-    Version = "v1",
-    Contratos = "docs/spec_kit/versiones/v1_producto_sqlserver/6_contracts.md"
+    Version = "v2",
+    Contratos = "docs/spec_kit/versiones/v2/6_contracts.md"
 }));
 
 app.Run();

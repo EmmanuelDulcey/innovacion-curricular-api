@@ -233,6 +233,135 @@ public class RepositorioAliadoFalso : IRepositorioAliado
 }
 
 /// <summary>
+/// Repositorio FALSO en memoria de `facultad` (v2). El flag `tieneHijos` simula
+/// el bloqueo del maestro (programas activos): si esta activo, el borrado logico
+/// devuelve 0 filas, y el servicio lo traduce a ConflictoExcepcion (409).
+/// </summary>
+public class RepositorioFacultadFalso : IRepositorioFacultad
+{
+    private readonly List<Facultad> _datos = new();
+    private readonly bool _tieneHijos;
+
+    public RepositorioFacultadFalso(bool tieneHijos = false)
+    {
+        _tieneHijos = tieneHijos;
+    }
+
+    public Task<List<Facultad>> ObtenerTodosAsync(int limite)
+        => Task.FromResult(_datos.Where(d => d.Activo).Take(limite).ToList());
+
+    public Task<Facultad?> ObtenerPorIdAsync(int id)
+        => Task.FromResult(_datos.FirstOrDefault(d => d.Id == id && d.Activo));
+
+    public Task<Facultad> CrearAsync(Facultad entidad)
+    {
+        _datos.Add(entidad);
+        return Task.FromResult(entidad);
+    }
+
+    public Task<int> ActualizarAsync(Facultad entidad)
+    {
+        var registro = _datos.FirstOrDefault(d => d.Id == entidad.Id && d.Activo);
+        if (registro is null) return Task.FromResult(0);
+        registro.Nombre = entidad.Nombre;
+        registro.Tipo = entidad.Tipo;
+        registro.FechaFun = entidad.FechaFun;
+        registro.Universidad = entidad.Universidad;
+        return Task.FromResult(1);
+    }
+
+    public Task<int> EliminarAsync(int id)
+    {
+        var registro = _datos.FirstOrDefault(d => d.Id == id && d.Activo);
+        if (registro is null) return Task.FromResult(0);
+        if (_tieneHijos) return Task.FromResult(0);
+        registro.Activo = false;
+        return Task.FromResult(1);
+    }
+}
+
+/// <summary>
+/// Repositorio FALSO en memoria de `pasantia` (v2, detalle de `programa`).
+/// </summary>
+public class RepositorioPasantiaFalso : IRepositorioPasantia
+{
+    private readonly List<Pasantia> _datos = new();
+
+    public Task<List<Pasantia>> ObtenerTodosAsync(int limite)
+        => Task.FromResult(_datos.Where(d => d.Activo).Take(limite).ToList());
+
+    public Task<Pasantia?> ObtenerPorIdAsync(int id)
+        => Task.FromResult(_datos.FirstOrDefault(d => d.Id == id && d.Activo));
+
+    public Task<Pasantia> CrearAsync(Pasantia entidad)
+    {
+        _datos.Add(entidad);
+        return Task.FromResult(entidad);
+    }
+
+    public Task<int> ActualizarAsync(Pasantia entidad)
+    {
+        var registro = _datos.FirstOrDefault(d => d.Id == entidad.Id && d.Activo);
+        if (registro is null) return Task.FromResult(0);
+        registro.Nombre = entidad.Nombre;
+        registro.Pais = entidad.Pais;
+        registro.Empresa = entidad.Empresa;
+        registro.Descripcion = entidad.Descripcion;
+        registro.Programa = entidad.Programa;
+        return Task.FromResult(1);
+    }
+
+    public Task<int> EliminarAsync(int id)
+    {
+        var registro = _datos.FirstOrDefault(d => d.Id == id && d.Activo);
+        if (registro is null) return Task.FromResult(0);
+        registro.Activo = false;
+        return Task.FromResult(1);
+    }
+}
+
+/// <summary>
+/// Repositorio FALSO en memoria de `premio` (v2, detalle de `programa`).
+/// </summary>
+public class RepositorioPremioFalso : IRepositorioPremio
+{
+    private readonly List<Premio> _datos = new();
+
+    public Task<List<Premio>> ObtenerTodosAsync(int limite)
+        => Task.FromResult(_datos.Where(d => d.Activo).Take(limite).ToList());
+
+    public Task<Premio?> ObtenerPorIdAsync(int id)
+        => Task.FromResult(_datos.FirstOrDefault(d => d.Id == id && d.Activo));
+
+    public Task<Premio> CrearAsync(Premio entidad)
+    {
+        _datos.Add(entidad);
+        return Task.FromResult(entidad);
+    }
+
+    public Task<int> ActualizarAsync(Premio entidad)
+    {
+        var registro = _datos.FirstOrDefault(d => d.Id == entidad.Id && d.Activo);
+        if (registro is null) return Task.FromResult(0);
+        registro.Nombre = entidad.Nombre;
+        registro.Descripcion = entidad.Descripcion;
+        registro.Fecha = entidad.Fecha;
+        registro.EntidadOtorgante = entidad.EntidadOtorgante;
+        registro.Pais = entidad.Pais;
+        registro.Programa = entidad.Programa;
+        return Task.FromResult(1);
+    }
+
+    public Task<int> EliminarAsync(int id)
+    {
+        var registro = _datos.FirstOrDefault(d => d.Id == id && d.Activo);
+        if (registro is null) return Task.FromResult(0);
+        registro.Activo = false;
+        return Task.FromResult(1);
+    }
+}
+
+/// <summary>
 /// Programa de consola (prueba de capas). Verificaciones:
 ///   1. Crear nuevo registro via servicio.
 ///   2. Listar: el registro aparece.
@@ -258,6 +387,9 @@ public static class Programa
             await ProbarPracticaEstrategia();
             await ProbarCarInnovacion();
             await ProbarAliado();
+            await ProbarFacultad();
+            await ProbarPasantia();
+            await ProbarPremio();
 
             Console.WriteLine($"Prueba de capas SUPERADA: {_contador} verificaciones en verde.");
             return 0;
@@ -428,6 +560,182 @@ public static class Programa
         await EsperarExcepcion(() => servicio.ActualizarAsync(900123456, new AliadoActualizar()), typeof(ArgumentException), "37. PATCH vacío de aliado");
         Confirmar(await servicio.EliminarAsync(900123456) == 1, "38. Borrado lógico de aliado");
         await EsperarExcepcion(() => servicio.ObtenerPorIdAsync(900123456), typeof(NoEncontradoExcepcion), "39. Aliado inactivo devuelve 404");
+    }
+
+    private static async Task ProbarFacultad()
+    {
+        // `facultad` (v2) es un maestro de `programa`: chequeo del ciclo CRUD sin
+        // base de datos y de la regla §3.1 (no se retira con hijos activos).
+        IServicioFacultad servicio = new ServicioFacultad(new RepositorioFacultadFalso());
+
+        var creado = await servicio.CrearAsync(new FacultadCrear
+        {
+            Id = 2,
+            Nombre = "Facultad de Ingeniería",
+            Tipo = "Pública",
+            FechaFun = new DateTime(1960, 3, 15),
+            Universidad = 1
+        });
+        Confirmar(creado.Id == 2 && creado.Nombre == "Facultad de Ingeniería", "40. Facultad creada (devuelve la fila)");
+
+        Confirmar((await servicio.ObtenerTodosAsync(1000)).Count == 1, "41. Facultad listada");
+
+        var registro = await servicio.ObtenerPorIdAsync(2);
+        Confirmar(registro.Universidad == 1, "42. Facultad obtenida por id");
+
+        await servicio.ReemplazarAsync(2, new FacultadReemplazo
+        {
+            Nombre = "Facultad de Ciencias",
+            Tipo = "Privada",
+            FechaFun = new DateTime(1975, 8, 1),
+            Universidad = 2
+        });
+        registro = await servicio.ObtenerPorIdAsync(2);
+        Confirmar(registro.Nombre == "Facultad de Ciencias" && registro.Universidad == 2, "43. Facultad reemplazada (PUT)");
+
+        await servicio.ActualizarAsync(2, new FacultadActualizar { Tipo = "Mixta" });
+        registro = await servicio.ObtenerPorIdAsync(2);
+        Confirmar(registro.Tipo == "Mixta" && registro.Nombre == "Facultad de Ciencias", "44. Facultad actualizada parcialmente (PATCH)");
+
+        await EsperarExcepcion(
+            () => servicio.ObtenerPorIdAsync(999),
+            typeof(NoEncontradoExcepcion),
+            "45. Facultad inexistente devuelve 404");
+
+        await EsperarExcepcion(
+            () => servicio.ActualizarAsync(2, new FacultadActualizar()),
+            typeof(ArgumentException),
+            "46. PATCH vacío de facultad lanza ArgumentException");
+
+        Confirmar(await servicio.EliminarAsync(2) == 1, "47. Borrado lógico de facultad");
+
+        await EsperarExcepcion(
+            () => servicio.EliminarAsync(2),
+            typeof(NoEncontradoExcepcion),
+            "48. Segundo DELETE de facultad devuelve 404");
+
+        // Regla §3.1: el maestro con hijos activos no se retira -> ConflictoExcepcion (409).
+        IServicioFacultad servicioBloqueado = new ServicioFacultad(new RepositorioFacultadFalso(tieneHijos: true));
+        await servicioBloqueado.CrearAsync(new FacultadCrear
+        {
+            Id = 3,
+            Nombre = "Facultad con programas",
+            Tipo = "Pública",
+            FechaFun = new DateTime(1990, 1, 1),
+            Universidad = 1
+        });
+        await EsperarExcepcion(
+            () => servicioBloqueado.EliminarAsync(3),
+            typeof(ConflictoExcepcion),
+            "49. Facultad con hijos activos lanza ConflictoExcepcion (409)");
+    }
+
+    private static async Task ProbarPasantia()
+    {
+        // `pasantia` (v2) es un detalle de `programa`: ciclo CRUD completo.
+        IServicioPasantia servicio = new ServicioPasantia(new RepositorioPasantiaFalso());
+
+        var creado = await servicio.CrearAsync(new PasantiaCrear
+        {
+            Id = 2,
+            Nombre = "Pasantía internacional",
+            Pais = "Chile",
+            Empresa = "ACME S.A.",
+            Descripcion = "Práctica profesional en el exterior",
+            Programa = 10
+        });
+        Confirmar(creado.Id == 2 && creado.Programa == 10, "50. Pasantía creada (devuelve la fila)");
+
+        Confirmar((await servicio.ObtenerTodosAsync(1000)).Count == 1, "51. Pasantía listada");
+
+        Confirmar((await servicio.ObtenerPorIdAsync(2)).Pais == "Chile", "52. Pasantía obtenida por id");
+
+        await servicio.ReemplazarAsync(2, new PasantiaReemplazo
+        {
+            Nombre = "Pasantía nacional",
+            Pais = "Colombia",
+            Empresa = "Ecopetrol",
+            Descripcion = "Práctica en el país",
+            Programa = 11
+        });
+        var registro = await servicio.ObtenerPorIdAsync(2);
+        Confirmar(registro.Pais == "Colombia" && registro.Programa == 11, "53. Pasantía reemplazada (PUT)");
+
+        await servicio.ActualizarAsync(2, new PasantiaActualizar { Empresa = "Ecopetrol S.A." });
+        registro = await servicio.ObtenerPorIdAsync(2);
+        Confirmar(registro.Empresa == "Ecopetrol S.A." && registro.Pais == "Colombia", "54. Pasantía actualizada parcialmente (PATCH)");
+
+        await EsperarExcepcion(
+            () => servicio.ObtenerPorIdAsync(999),
+            typeof(NoEncontradoExcepcion),
+            "55. Pasantía inexistente devuelve 404");
+
+        await EsperarExcepcion(
+            () => servicio.ActualizarAsync(2, new PasantiaActualizar()),
+            typeof(ArgumentException),
+            "56. PATCH vacío de pasantía lanza ArgumentException");
+
+        Confirmar(await servicio.EliminarAsync(2) == 1, "57. Borrado lógico de pasantía");
+
+        await EsperarExcepcion(
+            () => servicio.ObtenerPorIdAsync(2),
+            typeof(NoEncontradoExcepcion),
+            "58. Pasantía inactiva devuelve 404");
+    }
+
+    private static async Task ProbarPremio()
+    {
+        // `premio` (v2) es un detalle de `programa`: ciclo CRUD completo.
+        IServicioPremio servicio = new ServicioPremio(new RepositorioPremioFalso());
+
+        var creado = await servicio.CrearAsync(new PremioCrear
+        {
+            Id = 2,
+            Nombre = "Premio a la innovación",
+            Descripcion = "Reconocimiento nacional",
+            Fecha = new DateTime(2020, 11, 20),
+            EntidadOtorgante = "MEN",
+            Pais = "Colombia",
+            Programa = 10
+        });
+        Confirmar(creado.Id == 2 && creado.EntidadOtorgante == "MEN", "59. Premio creado (devuelve la fila)");
+
+        Confirmar((await servicio.ObtenerTodosAsync(1000)).Count == 1, "60. Premio listado");
+
+        Confirmar((await servicio.ObtenerPorIdAsync(2)).Pais == "Colombia", "61. Premio obtenido por id");
+
+        await servicio.ReemplazarAsync(2, new PremioReemplazo
+        {
+            Nombre = "Premio a la calidad",
+            Descripcion = "Reconocimiento internacional",
+            Fecha = new DateTime(2021, 5, 10),
+            EntidadOtorgante = "UNESCO",
+            Pais = "Francia",
+            Programa = 11
+        });
+        var registro = await servicio.ObtenerPorIdAsync(2);
+        Confirmar(registro.Nombre == "Premio a la calidad" && registro.EntidadOtorgante == "UNESCO", "62. Premio reemplazado (PUT)");
+
+        await servicio.ActualizarAsync(2, new PremioActualizar { Pais = "Suiza" });
+        registro = await servicio.ObtenerPorIdAsync(2);
+        Confirmar(registro.Pais == "Suiza" && registro.Nombre == "Premio a la calidad", "63. Premio actualizado parcialmente (PATCH)");
+
+        await EsperarExcepcion(
+            () => servicio.ObtenerPorIdAsync(999),
+            typeof(NoEncontradoExcepcion),
+            "64. Premio inexistente devuelve 404");
+
+        await EsperarExcepcion(
+            () => servicio.ActualizarAsync(2, new PremioActualizar()),
+            typeof(ArgumentException),
+            "65. PATCH vacío de premio lanza ArgumentException");
+
+        Confirmar(await servicio.EliminarAsync(2) == 1, "66. Borrado lógico de premio");
+
+        await EsperarExcepcion(
+            () => servicio.ObtenerPorIdAsync(2),
+            typeof(NoEncontradoExcepcion),
+            "67. Premio inactivo devuelve 404");
     }
 
     private static void Confirmar(bool condicion, string nombre)

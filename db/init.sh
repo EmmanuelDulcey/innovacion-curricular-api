@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # =============================================================================
 # init.sh
-# Inicializa la base de datos `innovacion_curricular` ejecutando, en orden,
-# los tres scripts provistos para la v1. Se ejecuta UNA sola vez por volumen,
-# desde el contenedor `sqlserver-init` (docker-compose).
+# Inicializa la base de datos `innovacion_curricular`. Se ejecuta desde el
+# contenedor `sqlserver-init` (docker-compose).
 #
-# Orden (fuente: 3_plan.md, Seccion 4.7):
-#   1. innovacion_curricular.ss.sql     -> crea las 25 tablas de la base
-#   2. 01_activar_borrado_logico.sql    -> agrega la columna `activo` (BIT)
-#   3. 02_datos_iniciales.sql           -> carga 218 areas y 6 universidades
+# Orden (fuente: 3_plan.md, Secciones 4.7 y 11):
+#   1. innovacion_curricular.ss.sql          -> crea las 25 tablas de la base
+#   2. 01_activar_borrado_logico.sql         -> v1: `activo` en las 7 tablas sin FK
+#   3. 02_datos_iniciales.sql                -> v1: carga 218 areas y 6 universidades
+#   4. 03_activar_borrado_logico_v2.sql      -> v2: `activo` en las 15 tablas con FK
+#   5. 04_procedimientos_v2_*.sql            -> v2: procedimientos + disparador
 #
-# La primera ejecución crea el esquema y carga los datos base. Las ejecuciones
-# posteriores comprueban el esquema y no vuelven a sembrar datos: así no se
-# borran cambios realizados por la API.
+# Los pasos 1-3 son la base de la v1: sólo corren cuando la base NO existe, para
+# no volver a sembrar (no se borran cambios hechos por la API). Los pasos 4-5 son
+# idempotentes y NO destructivos, así que se aplican SIEMPRE: migran una base de
+# la v1 a la v2 y son no-ops cuando ya están aplicados.
 # =============================================================================
 set -e
 
@@ -66,7 +68,7 @@ case "$estado" in
     run_script /scripts/02_datos_iniciales.sql
     ;;
   ready)
-    echo "[init] Base ya inicializada; se conservan sus datos."
+    echo "[init] Base v1 ya inicializada; se conservan sus datos."
     ;;
   partial)
     echo "[init] ERROR: la base existe pero su esquema esta incompleto."
@@ -78,5 +80,19 @@ case "$estado" in
     exit 1
     ;;
 esac
+
+# -----------------------------------------------------------------------------
+# v2: scripts idempotentes y no destructivos. Se aplican SIEMPRE para migrar
+# una base de la v1 y para dejar lista una recien creada.
+#   * 03_activar_borrado_logico_v2.sql -> `activo` en las 15 tablas + contador
+#   * 04_procedimientos_v2_*.sql       -> procedimientos + disparador
+# -----------------------------------------------------------------------------
+echo "[init] Aplicando los scripts de la v2 (idempotentes)."
+run_script /scripts/03_activar_borrado_logico_v2.sql
+
+shopt -s nullglob
+for script in /scripts/04_*.sql; do
+  run_script "$script"
+done
 
 echo "[init] Inicializacion completada."

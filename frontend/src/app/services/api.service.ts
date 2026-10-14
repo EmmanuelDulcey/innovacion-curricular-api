@@ -9,7 +9,7 @@ import { HttpClient, HttpErrorResponse, HttpResponse } from '@angular/common/htt
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { ApiError, RespuestaLista } from '../models/catalogo';
+import { ApiError, RespuestaCreacion, RespuestaLista } from '../models/catalogo';
 
 export interface RespuestaExitoBasica {
   estado: number;
@@ -52,9 +52,10 @@ export class ApiService {
   }
 
   // POST /api/{tabla} (RF3). Body invalido -> 422 con errores[].
-  crear<T>(tabla: string, body: Partial<T>): Observable<RespuestaExitoBasica> {
+  // En la v2 la respuesta trae la fila creada en `datos` (9_frontend.md §6).
+  crear<T>(tabla: string, body: Partial<T>): Observable<RespuestaCreacion<T>> {
     return this.http
-      .post<RespuestaExitoBasica>(`${this.apiUrl}/api/${tabla}`, body)
+      .post<RespuestaCreacion<T>>(`${this.apiUrl}/api/${tabla}`, body)
       .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
   }
 
@@ -76,6 +77,22 @@ export class ApiService {
   eliminar(tabla: string, id: number | string): Observable<RespuestaFilas> {
     return this.http
       .delete<RespuestaFilas>(`${this.apiUrl}/api/${tabla}/${id}`)
+      .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
+  }
+
+  // POST /api/{puente} (v2): asigna una pareja en una tabla puente. Repetir la
+  // pareja -> 409. Fuente: 9_frontend.md §6.
+  asignar<T>(puente: string, pareja: Partial<T>): Observable<RespuestaCreacion<T>> {
+    return this.http
+      .post<RespuestaCreacion<T>>(`${this.apiUrl}/api/${puente}`, pareja)
+      .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
+  }
+
+  // DELETE /api/{puente}/{pk1}/{pk2} (v2): retira la pareja. Retirar una pareja
+  // inexistente -> 404. Fuente: 9_frontend.md §6.
+  retirar(puente: string, pk1: number | string, pk2: number | string): Observable<RespuestaFilas> {
+    return this.http
+      .delete<RespuestaFilas>(`${this.apiUrl}/api/${puente}/${pk1}/${pk2}`)
       .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
   }
 

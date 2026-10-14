@@ -166,11 +166,13 @@ tr:last-child td {
   color: #a33;
 }
 
-.campo input {
+.campo input,
+.campo select {
   padding: 0.5rem 0.75rem;
   border: 1px solid #c5ced8;
   border-radius: 6px;
   font-size: 0.9rem;
+  background: #fff;
 }
 
 .campo input:read-only {
