@@ -48,6 +48,7 @@ services:
     environment:
       ASPNETCORE_URLS: "http://+:8036"
       ConnectionStrings__SqlServer: "Server=sqlserver,1433;Database=innovacion_curricular;User Id=sa;Password=${MSSQL_SA_PASSWORD:-InnovacionCurricular123!};TrustServerCertificate=True;Encrypt=False"
+      DB_CONNECTION: "Server=sqlserver,1433;Database=innovacion_curricular;User Id=sa;Password=${MSSQL_SA_PASSWORD:-InnovacionCurricular123!};TrustServerCertificate=True;Encrypt=False"
     ports:
       - "8036:8036"
     depends_on:

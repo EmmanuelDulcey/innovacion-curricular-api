@@ -50,7 +50,7 @@
           @for (fila of registrosFiltrados(); track fila[config()!.llave]) {
             <tr>
               @for (campo of config()!.campos; track campo.campo) {
-                <td>{{ fila[campo.campo] }}</td>
+                <td>{{ valorVisible(fila, campo) }}</td>
               }
               <td>
                 <span class="estado" [class.inactivo]="fila['activo'] === false">
@@ -86,13 +86,31 @@
                 <span class="req">*</span>
               }
             </label>
-            <input
-              [type]="campo.tipo === 'entero' ? 'number' : 'text'"
-              [name]="campo.campo"
-              [(ngModel)]="forma[campo.campo]"
-              [readonly]="esSoloLectura(campo)"
-              step="1"
-            />
+            @if (campo.tipo === 'desplegable') {
+              <select [name]="campo.campo" [(ngModel)]="forma[campo.campo]">
+                <option [ngValue]="null">
+                  {{ campo.requerido ? 'Seleccione…' : '(ninguna)' }}
+                </option>
+                @for (opcion of opcionesDe(campo); track opcion.valor) {
+                  <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
+                }
+              </select>
+            } @else if (campo.tipo === 'fecha') {
+              <input
+                type="date"
+                [name]="campo.campo"
+                [(ngModel)]="forma[campo.campo]"
+                [readonly]="esSoloLectura(campo)"
+              />
+            } @else {
+              <input
+                [type]="campo.tipo === 'entero' ? 'number' : 'text'"
+                [name]="campo.campo"
+                [(ngModel)]="forma[campo.campo]"
+                [readonly]="esSoloLectura(campo)"
+                step="1"
+              />
+            }
             @if (erroresPorCampo()[campo.campo]) {
               <span class="error-campo">{{ erroresPorCampo()[campo.campo] }}</span>
             }

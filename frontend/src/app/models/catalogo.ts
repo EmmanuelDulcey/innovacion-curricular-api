@@ -17,6 +17,14 @@ export interface RespuestaLista<T> {
   datos: T[];
 }
 
+// Envoltorio del POST de la v2: el registro creado vuelve en `datos`
+// (9_frontend.md §4). Fuente: 6_contracts.md §4.
+export interface RespuestaCreacion<T> {
+  estado: number;
+  mensaje: string;
+  datos: T;
+}
+
 export interface ApiError {
   estado: number;
   mensaje: string;
@@ -85,17 +93,66 @@ export interface Aliado {
 
 export type CualquierRegistro = Record<string, any>;
 
+// --- Entidades de la v2 (9_frontend.md §4) ----------------------------------
+// Cada fila trae ademas el nombre de la FK (`universidadNombre`,
+// `programaNombre`), que es lo que se muestra en el listado (6_contracts.md §0.7).
+
+export interface Facultad {
+  id: number;
+  nombre: string;
+  tipo: string;
+  fechaFun: string;          // DATE -> "yyyy-MM-dd"
+  universidad: number;
+  universidadNombre?: string;
+  activo: boolean;
+}
+
+export interface Pasantia {
+  id: number;
+  nombre: string;
+  pais: string;
+  empresa: string;
+  descripcion: string;
+  programa: number;
+  programaNombre?: string;
+  activo: boolean;
+}
+
+export interface Premio {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  fecha: string;             // DATE -> "yyyy-MM-dd"
+  entidadOtorgante: string;
+  pais: string;
+  programa: number;
+  programaNombre?: string;
+  activo: boolean;
+}
+
+// Opcion de un desplegable de clave foranea (9_frontend.md §8): se muestra la
+// etiqueta de la maestra y se envia su clave.
+export interface OpcionFk {
+  valor: number;
+  etiqueta: string;
+}
+
 // --- Configuracion generica de la pagina catalogo ---------------------------
 export interface CampoConfig {
   campo: string;        // clave en snake_case (la misma que usa la API)
   etiqueta: string;     // nombre legible para la interfaz (español)
   // 'correo' se comporta como 'texto' pero ademas valida formato de correo
   // antes de enviar (lo exige el formulario de `aliado`, issue #3 punto 8).
-  tipo: 'texto' | 'entero' | 'correo';
+  // 'desplegable' es una clave foranea (select); 'fecha' es un DATE (input date).
+  tipo: 'texto' | 'entero' | 'correo' | 'desplegable' | 'fecha';
   requerido: boolean;
   editable: boolean;    // false para la llave: obligatoria al crear, solo lectura al editar
   maximo: number | null;
   esLlave?: boolean;
+  // Metadatos de las claves foraneas (solo 'desplegable', 9_frontend.md §8):
+  origen?: string;              // tabla maestra de la que salen las opciones
+  origenEtiqueta?: string;      // columna a mostrar (por defecto 'nombre')
+  campoMostrar?: string;        // columna con el nombre resuelto (<fk>_nombre) para el listado
 }
 
 export interface TablaConfig {
@@ -105,7 +162,9 @@ export interface TablaConfig {
   campos: CampoConfig[];
 }
 
-// Las 7 tablas disponibles en v1 (valores válidos de :tabla, 9_frontend.md §3).
+// Las tablas disponibles (valores válidos de :tabla, 9_frontend.md §3). En la v2
+// se suman facultad, pasantia y premio (issue #1); las demás tablas de la v2 las
+// integran los otros issues.
 export const TABLAS: string[] = [
   'area_conocimiento',
   'universidad',
@@ -114,6 +173,9 @@ export const TABLAS: string[] = [
   'enfoque',
   'car_innovacion',
   'aliado',
+  'facultad',
+  'pasantia',
+  'premio',
 ];
 
 // Configuracion por tabla. Los catalogos de Felipe siguen el mismo formulario
@@ -199,6 +261,76 @@ export const CATALOGOS: Record<string, TablaConfig> = {
       { campo: 'correo', etiqueta: 'Correo', tipo: 'correo', requerido: true, editable: true, maximo: 70 },
       { campo: 'telefono', etiqueta: 'Teléfono', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'ciudad', etiqueta: 'Ciudad', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+    ],
+  },
+  // --- v2 (issue #1) --------------------------------------------------------
+  facultad: {
+    nombre: 'facultad',
+    nombreLegible: 'Facultad',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
+      { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'fecha_fun', etiqueta: 'Fecha de fundación', tipo: 'fecha', requerido: true, editable: true, maximo: null },
+      {
+        campo: 'universidad',
+        etiqueta: 'Universidad',
+        tipo: 'desplegable',
+        requerido: true,
+        editable: true,
+        maximo: null,
+        origen: 'universidad',
+        origenEtiqueta: 'nombre',
+        campoMostrar: 'universidad_nombre',
+      },
+    ],
+  },
+  pasantia: {
+    nombre: 'pasantia',
+    nombreLegible: 'Pasantía',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'pais', etiqueta: 'País', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'empresa', etiqueta: 'Empresa', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      {
+        campo: 'programa',
+        etiqueta: 'Programa',
+        tipo: 'desplegable',
+        requerido: true,
+        editable: true,
+        maximo: null,
+        origen: 'programa',
+        origenEtiqueta: 'nombre',
+        campoMostrar: 'programa_nombre',
+      },
+    ],
+  },
+  premio: {
+    nombre: 'premio',
+    nombreLegible: 'Premio',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'fecha', etiqueta: 'Fecha', tipo: 'fecha', requerido: true, editable: true, maximo: null },
+      { campo: 'entidad_otorgante', etiqueta: 'Entidad otorgante', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      { campo: 'pais', etiqueta: 'País', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
+      {
+        campo: 'programa',
+        etiqueta: 'Programa',
+        tipo: 'desplegable',
+        requerido: true,
+        editable: true,
+        maximo: null,
+        origen: 'programa',
+        origenEtiqueta: 'nombre',
+        campoMostrar: 'programa_nombre',
+      },
     ],
   },
 };

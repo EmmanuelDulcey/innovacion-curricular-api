@@ -1,13 +1,17 @@
 import { Component, computed, effect, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { lastValueFrom } from 'rxjs';
+import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
 import { MensajeError } from '../../components/mensaje-error/mensaje-error';
 import {
   ApiError,
   CampoConfig,
+  CATALOGOS,
   CualquierRegistro,
   obtenerConfig,
+  OpcionFk,
+  RespuestaLista,
   TablaConfig,
 } from '../../models/catalogo';
 
@@ -31,6 +35,10 @@ export class Catalogo {
   readonly error = signal<ApiError | null>(null);
   readonly filtro = signal('');
   readonly limite = signal(1000);
+
+  // Opciones de los desplegables de clave foranea, por tabla maestra de origen
+  // (9_frontend.md §8). Se cargan en paralelo al listado.
+  readonly opciones = signal<Record<string, OpcionFk[]>>({});
 
   // Estado del formulario (crear/editar).
   readonly editando = signal<{ fila: CualquierRegistro; esEdicion: boolean } | null>(null);
@@ -72,6 +80,9 @@ export class Catalogo {
 
     this.cargando.set(true);
     this.error.set(null);
+
+    // Las opciones de los desplegables se piden en paralelo al listado (§8).
+    const cargandoOpciones = this.cargarOpciones(cfg, version);
     try {
       const data = await lastValueFrom(this.api.listar<CualquierRegistro>(cfg.nombre, this.limite()));
       if (version === this.cargaVersion) this.registros.set(data?.datos ?? []);
@@ -83,6 +94,61 @@ export class Catalogo {
     } finally {
       if (version === this.cargaVersion) this.cargando.set(false);
     }
+
+    await cargandoOpciones;
+  }
+
+  // Carga las opciones de cada clave foranea con un forkJoin (una peticion por
+  // tabla maestra, en paralelo). Si una maestra falla o esta vacia, su lista
+  // queda vacia y el <select> solo muestra el texto de relleno.
+  private async cargarOpciones(cfg: TablaConfig, version: number) {
+    const origenes = [
+      ...new Set(
+        cfg.campos
+          .filter((campo) => campo.tipo === 'desplegable' && campo.origen)
+          .map((campo) => campo.origen as string),
+      ),
+    ];
+
+    if (origenes.length === 0) {
+      this.opciones.set({});
+      return;
+    }
+
+    const peticiones: Record<string, Observable<RespuestaLista<CualquierRegistro> | null>> = {};
+    for (const origen of origenes) {
+      peticiones[origen] = this.api
+        .listar<CualquierRegistro>(origen, 1000)
+        .pipe(catchError(() => of(null)));
+    }
+
+    try {
+      const resultados = await lastValueFrom(forkJoin(peticiones));
+      if (version !== this.cargaVersion) return;
+
+      const mapa: Record<string, OpcionFk[]> = {};
+      for (const origen of origenes) {
+        const llave = CATALOGOS[origen]?.llave ?? 'id';
+        const etiqueta = cfg.campos.find((campo) => campo.origen === origen)?.origenEtiqueta ?? 'nombre';
+        mapa[origen] = (resultados[origen]?.datos ?? []).map((item) => ({
+          valor: item[llave],
+          etiqueta: String(item[etiqueta] ?? item[llave]),
+        }));
+      }
+      this.opciones.set(mapa);
+    } catch {
+      if (version === this.cargaVersion) this.opciones.set({});
+    }
+  }
+
+  opcionesDe(campo: CampoConfig): OpcionFk[] {
+    return campo.origen ? this.opciones()[campo.origen] ?? [] : [];
+  }
+
+  // En el listado se muestra el nombre resuelto de la FK (<fk>_nombre) cuando el
+  // campo lo declara; si no, el valor crudo (9_frontend.md §4).
+  valorVisible(fila: CualquierRegistro, campo: CampoConfig): unknown {
+    return campo.campoMostrar ? fila[campo.campoMostrar] : fila[campo.campo];
   }
 
   cambiarLimite(valor: unknown) {
@@ -96,12 +162,24 @@ export class Catalogo {
   abrirCrear() {
     const cfg = this.config()!;
     const fila: Record<string, any> = {};
-    for (const campo of cfg.campos) fila[campo.campo] = '';
+    // Un desplegable arranca en null (su opcion de relleno); el resto en cadena
+    // vacia. Asi el select no queda con un valor inexistente (9_frontend.md §8).
+    for (const campo of cfg.campos) {
+      fila[campo.campo] = campo.tipo === 'desplegable' ? null : '';
+    }
     this.formaSeleccionada(fila, false);
   }
 
   abrirEditar(fila: CualquierRegistro) {
-    this.formaSeleccionada({ ...fila }, true);
+    const cfg = this.config()!;
+    const copia: Record<string, any> = { ...fila };
+    // El <input type="date"> solo acepta "yyyy-MM-dd"; se recorta la hora si vino.
+    for (const campo of cfg.campos) {
+      if (campo.tipo === 'fecha' && copia[campo.campo]) {
+        copia[campo.campo] = String(copia[campo.campo]).slice(0, 10);
+      }
+    }
+    this.formaSeleccionada(copia, true);
   }
 
   private formaSeleccionada(fila: Record<string, any>, esEdicion: boolean) {

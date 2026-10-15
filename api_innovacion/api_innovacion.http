@@ -1,6 +1,269 @@
-@api_innovacion_HostAddress = http://localhost:5177
+@host = http://localhost:8036
 
-GET {{api_innovacion_HostAddress}}/weatherforecast/
+# =============================================================================
+# Colección de pruebas de la API — Versión 2 (issue #1: facultad, pasantia, premio)
+#
+# Requiere la API en http://localhost:8036 (docker compose up -d --build).
+# Incluye casos VÁLIDOS y casos que DEBEN FALLAR (409, 422, 404), como pide la
+# guía. Contratos: docs/spec_kit/versiones/v2/6_contracts.md.
+#
+# Nota: pasantia y premio dependen de GET /api/programa (tabla de Valentina,
+# issue aparte). Se asume y se prueba con el programa id 10.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# 1. Diagnóstico
+# -----------------------------------------------------------------------------
+
+### GET / — debe responder version "v2"
+GET {{host}}/
 Accept: application/json
 
-###
+
+# -----------------------------------------------------------------------------
+# 2. facultad
+# -----------------------------------------------------------------------------
+
+### Listar facultades — 200 {tabla, limite, total, datos} (o 204 si está vacía)
+GET {{host}}/api/facultad?limite=100
+Accept: application/json
+
+### Obtener facultad 100 — 200 (o 404)
+GET {{host}}/api/facultad/100
+Accept: application/json
+
+### Crear facultad — 200 {estado, mensaje, datos} (devuelve la fila guardada)
+POST {{host}}/api/facultad
+Content-Type: application/json
+
+{
+  "id": 100,
+  "nombre": "Facultad de Prueba",
+  "tipo": "Pública",
+  "fecha_fun": "1990-01-15",
+  "universidad": 1
+}
+
+### Reemplazar (PUT) facultad 100 — 200
+PUT {{host}}/api/facultad/100
+Content-Type: application/json
+
+{
+  "nombre": "Facultad de Prueba 2",
+  "tipo": "Privada",
+  "fecha_fun": "1990-01-15",
+  "universidad": 1
+}
+
+### Actualizar parcial (PATCH) facultad 100 — 200
+PATCH {{host}}/api/facultad/100
+Content-Type: application/json
+
+{
+  "tipo": "Pública"
+}
+
+### Eliminar (DELETE, borrado lógico) facultad 100 — 200 filasEliminadas: 1
+DELETE {{host}}/api/facultad/100
+
+### Segundo DELETE facultad 100 — 404 (ya no hay registro activo)
+DELETE {{host}}/api/facultad/100
+
+### FALLA: FK inexistente (universidad 99999) — 409
+POST {{host}}/api/facultad
+Content-Type: application/json
+
+{
+  "id": 101,
+  "nombre": "X",
+  "tipo": "Pública",
+  "fecha_fun": "1990-01-15",
+  "universidad": 99999
+}
+
+### FALLA: PK duplicada (crear 100 dos veces) — 409
+# Ejecutar dos veces este mismo request; la segunda → 409.
+POST {{host}}/api/facultad
+Content-Type: application/json
+
+{
+  "id": 150,
+  "nombre": "Facultad duplicada",
+  "tipo": "Pública",
+  "fecha_fun": "1990-01-15",
+  "universidad": 1
+}
+
+### FALLA: body inválido (nombre vacío) — 422
+POST {{host}}/api/facultad
+Content-Type: application/json
+
+{
+  "id": 102,
+  "nombre": "",
+  "tipo": "Pública",
+  "fecha_fun": "1990-01-15",
+  "universidad": 1
+}
+
+### FALLA: PATCH sin campos — 400
+PATCH {{host}}/api/facultad/150
+Content-Type: application/json
+
+{}
+
+### FALLA: recurso inexistente — 404
+GET {{host}}/api/facultad/999999
+Accept: application/json
+
+### FALLA: retirar una facultad con programas activos — 409
+# Para reproducir: crear primero un programa (issue de Valentina) con esta
+# facultad y luego intentar el DELETE.
+DELETE {{host}}/api/facultad/150
+
+
+# -----------------------------------------------------------------------------
+# 3. pasantia (detalle de programa)
+# -----------------------------------------------------------------------------
+
+### Listar pasantías
+GET {{host}}/api/pasantia?limite=100
+Accept: application/json
+
+### Obtener pasantía 200
+GET {{host}}/api/pasantia/200
+Accept: application/json
+
+### Crear pasantía — 200 (devuelve la fila guardada con programa_nombre)
+POST {{host}}/api/pasantia
+Content-Type: application/json
+
+{
+  "id": 200,
+  "nombre": "Pasantía internacional",
+  "pais": "Chile",
+  "empresa": "ACME S.A.",
+  "descripcion": "Práctica profesional en el exterior",
+  "programa": 10
+}
+
+### Reemplazar (PUT) pasantía 200 — 200
+PUT {{host}}/api/pasantia/200
+Content-Type: application/json
+
+{
+  "nombre": "Pasantía nacional",
+  "pais": "Colombia",
+  "empresa": "Ecopetrol",
+  "descripcion": "Práctica en el país",
+  "programa": 10
+}
+
+### Actualizar parcial (PATCH) pasantía 200 — 200
+PATCH {{host}}/api/pasantia/200
+Content-Type: application/json
+
+{
+  "empresa": "Ecopetrol S.A."
+}
+
+### Eliminar (DELETE) pasantía 200 — 200
+DELETE {{host}}/api/pasantia/200
+
+### Segundo DELETE pasantía 200 — 404
+DELETE {{host}}/api/pasantia/200
+
+### FALLA: FK inexistente (programa 99999) — 409
+POST {{host}}/api/pasantia
+Content-Type: application/json
+
+{
+  "id": 201,
+  "nombre": "Pasantía X",
+  "pais": "Chile",
+  "empresa": "ACME S.A.",
+  "descripcion": "Prueba",
+  "programa": 99999
+}
+
+### FALLA: body inválido (id no positivo) — 422
+POST {{host}}/api/pasantia
+Content-Type: application/json
+
+{
+  "id": 0,
+  "nombre": "Pasantía X",
+  "pais": "Chile",
+  "empresa": "ACME S.A.",
+  "descripcion": "Prueba",
+  "programa": 10
+}
+
+
+# -----------------------------------------------------------------------------
+# 4. premio (detalle de programa)
+# -----------------------------------------------------------------------------
+
+### Listar premios
+GET {{host}}/api/premio?limite=100
+Accept: application/json
+
+### Obtener premio 300
+GET {{host}}/api/premio/300
+Accept: application/json
+
+### Crear premio — 200 (devuelve la fila guardada con programa_nombre)
+POST {{host}}/api/premio
+Content-Type: application/json
+
+{
+  "id": 300,
+  "nombre": "Premio a la innovación",
+  "descripcion": "Reconocimiento nacional",
+  "fecha": "2020-11-20",
+  "entidad_otorgante": "MEN",
+  "pais": "Colombia",
+  "programa": 10
+}
+
+### Reemplazar (PUT) premio 300 — 200
+PUT {{host}}/api/premio/300
+Content-Type: application/json
+
+{
+  "nombre": "Premio a la calidad",
+  "descripcion": "Reconocimiento internacional",
+  "fecha": "2021-05-10",
+  "entidad_otorgante": "UNESCO",
+  "pais": "Francia",
+  "programa": 10
+}
+
+### Actualizar parcial (PATCH) premio 300 — 200
+PATCH {{host}}/api/premio/300
+Content-Type: application/json
+
+{
+  "pais": "Suiza"
+}
+
+### Eliminar (DELETE) premio 300 — 200
+DELETE {{host}}/api/premio/300
+
+### Segundo DELETE premio 300 — 404
+DELETE {{host}}/api/premio/300
+
+### FALLA: FK inexistente (programa 99999) — 409
+POST {{host}}/api/premio
+Content-Type: application/json
+
+{
+  "id": 301,
+  "nombre": "Premio X",
+  "descripcion": "Prueba",
+  "fecha": "2020-11-20",
+  "entidad_otorgante": "MEN",
+  "pais": "Colombia",
+  "programa": 99999
+}
