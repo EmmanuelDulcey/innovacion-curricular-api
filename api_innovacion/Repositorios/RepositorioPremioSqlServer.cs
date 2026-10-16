@@ -41,7 +41,6 @@ public class RepositorioPremioSqlServer : IRepositorioPremio
     public async Task<Premio> CrearAsync(Premio entidad)
     {
         var parametros = new DynamicParameters();
-        parametros.Add("id", entidad.Id);
         parametros.Add("nombre", entidad.Nombre);
         parametros.Add("descripcion", entidad.Descripcion);
         parametros.Add("fecha", entidad.Fecha);

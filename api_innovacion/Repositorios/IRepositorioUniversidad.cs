@@ -11,7 +11,7 @@ public interface IRepositorioUniversidad
 {
     Task<List<Universidad>> ObtenerTodosAsync(int limite);
     Task<Universidad?> ObtenerPorIdAsync(int id);
-    Task CrearAsync(Universidad entidad);
+    Task<int> CrearAsync(Universidad entidad);
     Task<int> ActualizarAsync(int id, Dictionary<string, object> datos);
     Task<int> EliminarAsync(int id);
 }

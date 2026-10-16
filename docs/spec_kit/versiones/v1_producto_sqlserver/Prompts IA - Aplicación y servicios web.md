@@ -1,5 +1,11 @@
 ## **Prompt Valentina – Utilizo chat para generar el prompt con base en los documentos y terminal para que haga código**
 
+> **Nota de vigencia:** los prompts de esta bitácora conservan el contexto
+> histórico en que fueron escritos. La decisión aprobada en v2 D15 reemplaza
+> la regla antigua de enviar IDs internos en el POST: ahora SQL Server genera
+> incrementalmente las PK internas. Las claves naturales como `aliado.nit`
+> siguen enviándose porque identifican a la organización.
+
 ```text
 “Debo de hacer la issue 3. Quiero que leas cada uno de los documentos y me digas que entiendes que hay que hacer.”
 ```

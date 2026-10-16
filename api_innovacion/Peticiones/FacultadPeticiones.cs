@@ -3,14 +3,11 @@ using System.ComponentModel.DataAnnotations;
 namespace ApiInnovacion.Peticiones;
 
 /// <summary>
-/// Peticion del POST /api/facultad: todo obligatorio, incluida la PK (id) y la
+/// Peticion del POST /api/facultad: datos requeridos y la
 /// FK (universidad). Fuente: docs/spec_kit/versiones/v2/6_contracts.md, Sección 8.
 /// </summary>
 public class FacultadCrear
 {
-    [Required(ErrorMessage = "El campo id es obligatorio.")]
-    [Range(1, int.MaxValue, ErrorMessage = "El campo id debe ser un entero positivo.")]
-    public int? Id { get; set; }
 
     [Required(ErrorMessage = "El campo nombre es obligatorio.")]
     [StringLength(60, ErrorMessage = "El campo nombre no puede superar los 60 caracteres.")]

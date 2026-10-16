@@ -1,7 +1,12 @@
+// =============================================================================
+// QUÉ ES: página genérica de listado y formulario para /tablas/:tabla.
+// PAPEL: configura el catálogo desde catalogo.ts y concentra el filtrado en vivo,
+//       las opciones de claves y las operaciones sobre cada relación.
+// =============================================================================
 import { Component, computed, effect, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
 import { MensajeError } from '../../components/mensaje-error/mensaje-error';
 import {
@@ -39,6 +44,8 @@ export class Catalogo {
   // Opciones de los desplegables de clave foranea, por tabla maestra de origen
   // (9_frontend.md §8). Se cargan en paralelo al listado.
   readonly opciones = signal<Record<string, OpcionFk[]>>({});
+  readonly erroresOpciones = signal<Record<string, boolean>>({});
+  readonly opcionesPendientes = signal(false);
 
   // Estado del formulario (crear/editar).
   readonly editando = signal<{ fila: CualquierRegistro; esEdicion: boolean } | null>(null);
@@ -72,6 +79,13 @@ export class Catalogo {
     );
   });
 
+  // Escuchar el evento `input` actualiza el filtro en cada tecla y evita
+  // depender de que el usuario confirme una búsqueda con Enter o un botón.
+  actualizarFiltro(evento: Event): void {
+    const entrada = evento.target;
+    if (entrada instanceof HTMLInputElement) this.filtro.set(entrada.value);
+  }
+
   constructor(private readonly api: ApiService) {}
 
   async cargar(version = this.cargaVersion) {
@@ -102,6 +116,8 @@ export class Catalogo {
   // tabla maestra, en paralelo). Si una maestra falla o esta vacia, su lista
   // queda vacia y el <select> solo muestra el texto de relleno.
   private async cargarOpciones(cfg: TablaConfig, version: number) {
+    this.opcionesPendientes.set(true);
+    this.erroresOpciones.set({});
     const origenes = [
       ...new Set(
         cfg.campos
@@ -112,14 +128,22 @@ export class Catalogo {
 
     if (origenes.length === 0) {
       this.opciones.set({});
+      this.opcionesPendientes.set(false);
       return;
     }
 
-    const peticiones: Record<string, Observable<RespuestaLista<CualquierRegistro> | null>> = {};
+    type ResultadoOpcion = { respuesta: RespuestaLista<CualquierRegistro> | null; fallo: boolean };
+    const peticiones: Record<string, Observable<ResultadoOpcion>> = {};
     for (const origen of origenes) {
+      // El CRUD de programa pertenece a otro módulo; esta ruta de lectura
+      // provee sus opciones activas sin ocupar /api/programa.
+      const ruta = origen === 'programa' ? 'opciones/programa' : origen;
       peticiones[origen] = this.api
-        .listar<CualquierRegistro>(origen, 1000)
-        .pipe(catchError(() => of(null)));
+        .listar<CualquierRegistro>(ruta, 1000)
+        .pipe(
+          map((respuesta) => ({ respuesta, fallo: false })),
+          catchError(() => of({ respuesta: null, fallo: true })),
+        );
     }
 
     try {
@@ -127,21 +151,36 @@ export class Catalogo {
       if (version !== this.cargaVersion) return;
 
       const mapa: Record<string, OpcionFk[]> = {};
+      const fallos: Record<string, boolean> = {};
       for (const origen of origenes) {
         const llave = CATALOGOS[origen]?.llave ?? 'id';
-        const etiqueta = cfg.campos.find((campo) => campo.origen === origen)?.origenEtiqueta ?? 'nombre';
-        mapa[origen] = (resultados[origen]?.datos ?? []).map((item) => ({
+        const campoFk = cfg.campos.find((campo) => campo.origen === origen);
+        const etiqueta = campoFk?.origenEtiqueta ?? 'nombre';
+        const subEtiqueta = campoFk?.origenSubEtiqueta;
+        fallos[origen] = resultados[origen]?.fallo ?? false;
+        mapa[origen] = (resultados[origen]?.respuesta?.datos ?? []).map((item) => ({
           valor: item[llave],
-          etiqueta: String(item[etiqueta] ?? item[llave]),
+          etiqueta: subEtiqueta
+            ? `${item[etiqueta] ?? ''} — ${item[subEtiqueta] ?? ''}`
+            : String(item[etiqueta] ?? item[llave]),
         }));
       }
       this.opciones.set(mapa);
+      this.erroresOpciones.set(fallos);
     } catch {
-      if (version === this.cargaVersion) this.opciones.set({});
+      if (version === this.cargaVersion) {
+        this.opciones.set({});
+        this.erroresOpciones.set(Object.fromEntries(origenes.map((origen) => [origen, true])));
+      }
+    } finally {
+      if (version === this.cargaVersion) this.opcionesPendientes.set(false);
     }
   }
 
   opcionesDe(campo: CampoConfig): OpcionFk[] {
+    if (campo.opcionesFijas) {
+      return campo.opcionesFijas.map((valor) => ({ valor, etiqueta: valor }));
+    }
     return campo.origen ? this.opciones()[campo.origen] ?? [] : [];
   }
 
@@ -165,7 +204,7 @@ export class Catalogo {
     // Un desplegable arranca en null (su opcion de relleno); el resto en cadena
     // vacia. Asi el select no queda con un valor inexistente (9_frontend.md §8).
     for (const campo of cfg.campos) {
-      fila[campo.campo] = campo.tipo === 'desplegable' ? null : '';
+      fila[campo.campo] = campo.tipo === 'desplegable' || !campo.requerido ? null : '';
     }
     this.formaSeleccionada(fila, false);
   }
@@ -196,13 +235,37 @@ export class Catalogo {
     this.errorForm.set(null);
   }
 
+  // La pareja identifica de forma estable cada fila y conserva el orden de la
+  // ruta declarado en el contrato; la llave simple de la v1 sigue intacta.
+  claveFila(fila: CualquierRegistro): string {
+    const cfg = this.config()!;
+    return cfg.llaves
+      ? cfg.llaves.map((llave) => String(fila[llave])).join('|')
+      : String(fila[cfg.llave]);
+  }
+
+  // Las relaciones con columnas propias se pueden editar sin alterar su pareja;
+  // los puentes puros conservan solo las acciones de asignar y retirar.
+  puedeEditar(): boolean {
+    const cfg = this.config();
+    return cfg !== undefined && (!cfg.esRelacion || cfg.permiteEdicion === true);
+  }
+
+  esPuentePuro(): boolean {
+    const cfg = this.config();
+    return cfg?.esRelacion === true && cfg.permiteEdicion !== true;
+  }
+
   async eliminar(fila: CualquierRegistro) {
     const cfg = this.config()!;
-    const id = fila[cfg.llave];
-    if (!window.confirm('¿Eliminar este registro?')) return;
+    if (!window.confirm(cfg.esRelacion ? '¿Retirar esta relación?' : '¿Eliminar este registro?')) return;
 
     try {
-      await lastValueFrom(this.api.eliminar(cfg.nombre, id));
+      if (cfg.llaves) {
+        await lastValueFrom(this.api.retirar(cfg.nombre, fila[cfg.llaves[0]], fila[cfg.llaves[1]]));
+      } else {
+        await lastValueFrom(this.api.eliminar(cfg.nombre, fila[cfg.llave]));
+      }
       this.error.set(null);
       await this.cargar();
     } catch (error) {
@@ -224,11 +287,28 @@ export class Catalogo {
     const id = this.forma[cfg.llave];
     const body: Record<string, any> = {};
     for (const campo of cfg.campos) {
-      if (!esEdicion || campo.editable) body[campo.campo] = this.forma[campo.campo];
+      // Las claves que crea SQL Server nunca deben enviarse desde el formulario,
+      // tampoco al reemplazar un registro ya existente.
+      if (campo.generado) continue;
+      if (!esEdicion || campo.editable) {
+        const valor = this.forma[campo.campo];
+        // Los campos opcionales vacíos viajan como null, no como cadena vacía.
+        body[campo.campo] = !campo.requerido && (valor === '' || valor === undefined) ? null : valor;
+      }
     }
 
     try {
-      if (esEdicion) {
+      if (cfg.llaves && esEdicion) {
+        const filaOriginal = this.editando()!.fila;
+        await lastValueFrom(this.api.reemplazarRelacion(
+          cfg.nombre,
+          filaOriginal[cfg.llaves[0]],
+          filaOriginal[cfg.llaves[1]],
+          body,
+        ));
+      } else if (cfg.esRelacion) {
+        await lastValueFrom(this.api.asignar(cfg.nombre, body));
+      } else if (esEdicion) {
         await lastValueFrom(this.api.reemplazar(cfg.nombre, id, body));
       } else {
         await lastValueFrom(this.api.crear(cfg.nombre, body));
@@ -255,6 +335,8 @@ export class Catalogo {
   private validarFormulario(cfg: TablaConfig): Record<string, string> {
     const errores: Record<string, string> = {};
     for (const campo of cfg.campos) {
+      // El identificador autogenerado no se captura ni se valida en la interfaz.
+      if (campo.generado) continue;
       if (this.esSoloLectura(campo)) continue;
 
       const valor = this.forma[campo.campo];
@@ -266,7 +348,7 @@ export class Catalogo {
       }
       if (!vacio) {
         const texto = String(valor).trim();
-        if (campo.tipo === 'entero' && (Number.isNaN(Number(texto)) || Number(texto) <= 0)) {
+        if (campo.tipo === 'entero' && (!Number.isInteger(Number(texto)) || Number(texto) <= 0)) {
           errores[campo.campo] = `El campo ${campo.campo} debe ser un entero positivo.`;
           continue;
         }
@@ -277,10 +359,22 @@ export class Catalogo {
           errores[campo.campo] = `El campo ${campo.campo} debe tener un formato válido.`;
           continue;
         }
+        if (campo.opcionesFijas && !campo.opcionesFijas.includes(texto)) {
+          errores[campo.campo] = `Seleccione una opción válida para ${campo.etiqueta}.`;
+          continue;
+        }
         if (campo.maximo !== null && texto.length > campo.maximo) {
           errores[campo.campo] = `El campo ${campo.campo} no puede superar los ${campo.maximo} caracteres.`;
         }
       }
+    }
+    if (cfg.nombre === 'alianza' && this.forma['fecha_fin'] && this.forma['fecha_inicio']
+      && this.forma['fecha_fin'] < this.forma['fecha_inicio']) {
+      errores['fecha_fin'] = 'La fecha de fin no puede ser anterior a la fecha de inicio.';
+    }
+    if (cfg.nombre === 'docente_departamento' && this.forma['fecha_salida'] && this.forma['fecha_ingreso']
+      && this.forma['fecha_salida'] < this.forma['fecha_ingreso']) {
+      errores['fecha_salida'] = 'La fecha de salida no puede ser anterior a la fecha de ingreso.';
     }
     return errores;
   }

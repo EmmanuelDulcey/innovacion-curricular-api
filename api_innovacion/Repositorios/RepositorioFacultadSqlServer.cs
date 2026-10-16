@@ -43,7 +43,6 @@ public class RepositorioFacultadSqlServer : IRepositorioFacultad
     public async Task<Facultad> CrearAsync(Facultad entidad)
     {
         var parametros = new DynamicParameters();
-        parametros.Add("id", entidad.Id);
         parametros.Add("nombre", entidad.Nombre);
         parametros.Add("tipo", entidad.Tipo);
         parametros.Add("fecha_fun", entidad.FechaFun);

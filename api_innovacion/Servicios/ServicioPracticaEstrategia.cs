@@ -28,15 +28,15 @@ public class ServicioPracticaEstrategia : IServicioPracticaEstrategia
         return registro;
     }
 
-    public async Task CrearAsync(PracticaEstrategiaCrear peticion)
+    public async Task<PracticaEstrategia> CrearAsync(PracticaEstrategiaCrear peticion)
     {
-        await _repositorio.CrearAsync(new PracticaEstrategia
-        {
-            Id = peticion.Id!.Value,
-            Tipo = peticion.Tipo!,
+        var entidad = new PracticaEstrategia
+        {            Tipo = peticion.Tipo!,
             Nombre = peticion.Nombre!,
             Descripcion = peticion.Descripcion!
-        });
+        };
+        entidad.Id = await _repositorio.CrearAsync(entidad);
+        return entidad;
     }
 
     public async Task<int> ReemplazarAsync(int id, PracticaEstrategiaReemplazo peticion)

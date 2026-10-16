@@ -95,8 +95,10 @@ sus propias peticiones — sin una capa genérica compartida entre ellas.
 | `car_innovacion` | `CarInnovacion` | `id` |
 | `aliado` | `Aliado` | `nit` |
 
-Ninguna de las siete tablas usa `IDENTITY`: la llave primaria la asigna
-quien hace el `POST`.
+Las seis tablas con PK `id` generan el valor con una secuencia de SQL Server;
+el cliente no envía el ID en el POST. `aliado.nit` se mantiene como llave
+natural de la organización. La migración respeta los IDs existentes y agrega
+los valores por defecto sin reconstruir tablas.
 
 ## 3. Arquitectura en capas (flujo de una petición)
 

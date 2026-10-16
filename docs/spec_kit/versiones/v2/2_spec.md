@@ -2,7 +2,8 @@
 
 > **Versión 2** del desarrollo incremental ([mapa de versiones](../0_mapa_versiones.md)).
 > Rige la constitución del proyecto: [../../1_constitution.md](../../1_constitution.md).
-> La v2 agrega las **15 tablas con clave foránea** del módulo y con ellas cuatro
+> La v2 agrega las **15 tablas con clave foránea** del módulo y un catálogo
+> auxiliar local de docentes para resolver sus relaciones; con ello suma cuatro
 > cosas nuevas que definen la versión: el código **409**, el **desplegable** en
 > lugar de la clave digitada, los **procedimientos almacenados** como única vía
 > al SQL y al menos un **disparador**.
@@ -10,7 +11,8 @@
 > Este documento describe **solo el delta respecto de la v1**. Todo lo que la v1
 > dejó funcionando (las 7 tablas sin FK, la envoltura de lectura, el borrado
 > lógico, las tres peticiones por verbo, la arquitectura en capas) sigue vigente
-> y no se reescribe aquí.
+> y no se reescribe aquí. La decisión D15 sí actualiza cómo se genera la PK:
+> las columnas `id` internas las genera SQL Server; la interfaz no las solicita.
 
 | Documento de esta versión | Contenido |
 |---|---|
@@ -51,10 +53,14 @@ Tablas incluidas en la v2 (15), agrupadas por responsable:
 | Personas y aliados | `docente_departamento`, `alianza` | Felipe |
 | Puentes del programa | `programa_ac`, `programa_pe`, `programa_ci`, `an_programa` | Felipe |
 
-La v2 es deliberadamente la versión **más grande en cantidad de tablas** pero la
-más uniforme: las 15 comparten el mismo molde de capas y el mismo juego de cinco
-procedimientos, y lo único que cambia entre ellas es el número de claves
-foráneas.
+La v2 es deliberadamente la versión **más grande en cantidad de tablas** y
+reutiliza las capas de la v1. Las tablas con PK simple usan cinco procedimientos
+de CRUD. En el Issue 3 de Felipe, `docente_departamento` y `alianza` también
+tienen CRUD sobre sus atributos propios: la pareja compuesta queda fija en la
+ruta y no puede cambiarse al editar. Las cuatro tablas puente puras de programa
+(`programa_ac`, `programa_pe`, `programa_ci`, `an_programa`) sólo se asignan y
+retiran. Esta distinción evita tratar como iguales una relación con datos propios
+y una pareja que sólo representa pertenencia.
 
 ---
 
@@ -62,23 +68,30 @@ foráneas.
 
 **Incluye:**
 
-- CRUD completo de las 15 tablas con FK, **por procedimientos almacenados**
-  (`sp_listar_`, `sp_consultar_`, `sp_crear_`, `sp_actualizar_`, `sp_eliminar_`).
+- CRUD completo por procedimientos almacenados de tablas simples y de las
+  relaciones de Issue 3 con atributos (`docente_departamento`, `alianza`). Estas
+  dos usan `sp_listar_`, `sp_consultar_`, `sp_crear_`, `sp_actualizar_` y
+  `sp_eliminar_`; su pareja compuesta permanece inmutable. Las cuatro puentes
+  puras de Felipe usan `sp_listar_`, `sp_consultar_`, `sp_asignar_` y
+  `sp_retirar_`.
 - Repositorios que **solo llaman** a los procedimientos (Dapper con
   `CommandType.StoredProcedure`); **cero SQL a mano o concatenado en C#**.
-- `sp_crear_<tabla>` devuelve la fila **tal como quedó guardada** (`SELECT`
-  final), para que la interfaz pueda mostrar lo que acaba de crear.
+- `sp_crear_<tabla>` y `sp_asignar_<relacion>` devuelven la fila **tal como
+  quedó guardada** (`SELECT` final), para que la interfaz pueda mostrar el
+  registro o la pareja recién creada.
 - Traducción de integridad referencial a **409** en castellano: clave foránea
-  inexistente, pareja duplicada en tabla puente y borrado de un padre con hijos
-  activos.
+  inexistente, pareja duplicada en relación compuesta y borrado de un padre con
+  hijos activos.
 - **Al menos un disparador** en la base de datos (propuesta elegida en la §4),
   comprobable desde la interfaz.
 - Frontend Angular: CRUD visual de las 15 tablas, **todas las FK como
   desplegable** (muestra el nombre, envía la clave, solo ofrece activos),
-  opciones opcionales con «(ninguna)» → `null`, tablas puente **sin botón de
-  editar** y vista **maestro-detalle** de `programa`.
-- Endpoints para las tablas puente: **asignar** y **retirar** por pareja (sin
-  `PUT`).
+  opciones opcionales con «(ninguna)» → `null`, y vista **maestro-detalle** de
+  `programa`. Se editan los atributos de `docente_departamento` y `alianza` sin
+  cambiar sus claves; las cuatro puentes puras no muestran botón de editar.
+- Endpoints de `docente_departamento` y `alianza`: CRUD por pareja compuesta,
+  con las dos claves en la ruta para PUT/PATCH/DELETE. Las cuatro puentes puras
+  conservan asignar y retirar por pareja, sin `PUT` ni `PATCH`.
 - Script SQL de la v2 (borrado lógico + procedimientos) y actualización del
   inicializador de Docker.
 - Extensión de la suite de pruebas de capas y de la colección de peticiones,
@@ -229,9 +242,12 @@ pide la guía) vive en [6_contracts.md](6_contracts.md) §0.
 
 ## 6. Requisitos funcionales
 
-La v2 reutiliza los cinco verbos de la v1 (GET, POST, PUT, PATCH, DELETE) y
-añade un **sexto patrón** para las tablas puente (asignar/retirar por pareja).
-Los contratos completos están en [6_contracts.md](6_contracts.md).
+Las tablas con PK simple reutilizan los cinco verbos de CRUD de la v1 (GET,
+POST, PUT, PATCH, DELETE). En el Issue 3, `docente_departamento` y `alianza`
+usan esos mismos cinco verbos para su contenido, con la pareja inmutable en la
+ruta; las cuatro tablas puente puras usan GET para listar/consultar, POST para
+asignar y DELETE para retirar, sin edición. Los contratos completos están en
+[6_contracts.md](6_contracts.md).
 
 ### RF1 — Listar registros (con nombres de FK)
 `GET /api/{tabla}` → 200 con `{tabla, limite, total, datos:[…]}`.
@@ -266,14 +282,21 @@ procedimiento de actualización (los procedimientos tienen parámetros fijos).
 `{estado, mensaje, filasEliminadas}`. Inexistente o ya retirado → 404. **Padre
 con hijos activos → 409** (regla §3.1).
 
-### RF7 — Asignar una pareja (tablas puente)
-`POST /api/{puente}` con las dos claves. Éxito → 200
+### RF7 — Crear una relación con PK compuesta
+`POST /api/{relacion}` con las dos claves y, en `alianza` y
+`docente_departamento`, sus atributos obligatorios. Éxito → 200
 `{estado, mensaje, datos:{…}}`. **Pareja ya existente → 409.** Cualquiera de las
-dos FK inexistente → 409. Las tablas puente **no tienen PUT ni edición**: una
-pareja existe o no existe.
+dos FK inexistente → 409. `sp_crear_*` devuelve la fila como quedó guardada.
 
-### RF8 — Retirar una pareja (tablas puente)
-`DELETE /api/{puente}/{pk1}/{pk2}` → si existe, la desactiva (`activo = 0`) →
+### RF7.1 — Editar atributos de una relación con datos propios
+`PUT` y `PATCH` usan `/api/docente_departamento/{docente}/{departamento}` o
+`/api/alianza/{aliado}/{departamento}`. Reemplazan o actualizan sus atributos
+sin modificar ninguna de las dos claves. Un `PATCH` vacío → 400; una relación
+inexistente o retirada → 404; fechas incoherentes → 400. Las cuatro puentes
+puras no tienen estos verbos.
+
+### RF8 — Retirar una relación con PK compuesta
+`DELETE /api/{relacion}/{pk1}/{pk2}` → si existe, la desactiva (`activo = 0`) →
 200 `{estado, mensaje, filasEliminadas}`; si no existe → 404.
 
 ### RF9 — Diagnóstico
@@ -284,11 +307,12 @@ pareja existe o no existe.
 la v2) con el **total de registros activos** (`GET /api/{tabla}`), menú de
 navegación y estado de conexión con la API.
 
-### RF11 — CRUD visual con desplegables (Frontend)
+### RF11 — Operaciones visuales con desplegables (Frontend)
 `/tablas/{tabla}`: listado, búsqueda, y Crear/Editar/Eliminar. Cada FK es un
 **desplegable** cargado desde la API (nombre visible, clave enviada, sólo
-activos). FK opcional → opción «(ninguna)» que envía `null` (nunca `""`). Las
-tablas puente muestran **asignar** y **retirar**, sin editar.
+activos). FK opcional → opción «(ninguna)» que envía `null` (nunca `""`). En
+`docente_departamento` y `alianza` se puede editar el contenido, conservando la
+pareja; las cuatro puentes puras muestran **asignar** y **retirar**, sin editar.
 
 ### RF12 — Maestro-detalle de `programa` (Frontend)
 Al abrir un `programa` se ve y se agrega su detalle (acreditaciones, actividades
@@ -348,16 +372,17 @@ jerga** («PUT», «422», «FK»).
 
 1. `docker compose up -d --build` levanta SQL Server (con las 15 tablas y sus
    procedimientos) + API + Frontend; `GET /` responde `"version":"v2"`.
-2. CRUD punta a punta **por procedimientos almacenados** de las 15 tablas (sin
-   SQL en C#).
+2. CRUD o ciclo de asignar/retirar punta a punta **por procedimientos
+   almacenados** de las 15 tablas (sin SQL en C#).
 3. Todas las FK se eligen en **desplegables** cargados desde la API (muestran
    nombre, envían clave, sólo ofrecen activos).
 4. Existe la **pantalla maestro-detalle** de `programa`.
 5. **Borrado lógico**: retirar → desaparece del listado y sigue en la base;
    segundo `DELETE` → 404.
-6. Las **tablas puente** no tienen botón de editar (sólo asignar y retirar).
+6. `docente_departamento` y `alianza` permiten editar atributos sin cambiar su
+   pareja. Las cuatro puentes puras no tienen botón de editar (sólo asignar y retirar).
 7. **FK inexistente → 409** (nunca 500).
-8. **Pareja duplicada en puente → 409.**
+8. **Pareja duplicada en relación compuesta → 409.**
 9. El **disparador** es comprobable desde la interfaz (el dato cambia sin que la
    API lo envíe, incluido **retirar** un hijo).
 10. La interfaz está en **castellano y sin jerga**; opcionales con «(ninguna)» →
@@ -390,14 +415,15 @@ jerga** («PUT», «422», «FK»).
 4. Las 15 tablas tienen **`activo`** ⇒ borrado lógico y listados que filtran
    `activo = 1`.
 5. **Ninguna FK se digita**: desplegable cargado desde la API.
-6. FK inexistente, pareja duplicada en puente o **padre con hijos activos** →
+6. FK inexistente, pareja duplicada en relación compuesta o **padre con hijos activos** →
    **409** en castellano (nunca 500).
 7. Un **disparador** mantiene un estado derivado y es comprobable desde la
    interfaz.
 8. La **lógica de negocio vive en la base de datos** (procedimientos +
    disparador) **y** en el servicio (reglas de la §3.1); el controlador sólo
    traduce errores a HTTP. *(Esto invierte la regla 21 de la v1.)*
-9. Los puentes se manejan **por pareja**: asignar y retirar, sin edición.
+9. Las relaciones con atributos se editan por pareja sin cambiar sus claves; las
+   cuatro puentes puras se manejan por pareja: asignar y retirar, sin edición.
 10. La envoltura y los mensajes van **en castellano** (decisión §5, a la espera
     del ajuste del Artículo 8).
 11. La versión de estos contratos corresponde exclusivamente a la **v2**.

@@ -40,8 +40,7 @@ public class ServicioFacultad : IServicioFacultad
     {
         var entidad = new Facultad
         {
-            Id = peticion.Id!.Value,
-            Nombre = peticion.Nombre!,
+                        Nombre = peticion.Nombre!,
             Tipo = peticion.Tipo!,
             FechaFun = peticion.FechaFun!.Value,
             Universidad = peticion.Universidad!.Value
@@ -53,7 +52,7 @@ public class ServicioFacultad : IServicioFacultad
         }
         catch (SqlException ex)
         {
-            throw TraducirSqlException(ex, peticion.Id!.Value);
+            throw TraducirSqlException(ex, null);
         }
     }
 
@@ -122,12 +121,12 @@ public class ServicioFacultad : IServicioFacultad
         return filas;
     }
 
-    private static ConflictoExcepcion TraducirSqlException(SqlException ex, int id)
+    private static ConflictoExcepcion TraducirSqlException(SqlException ex, int? id)
     {
         return ex.Number switch
         {
             547 => new ConflictoExcepcion("La universidad indicada no existe o está inactiva."),
-            2627 or 2601 => new ConflictoExcepcion($"Ya existe un registro con esa clave ({id})."),
+            2627 or 2601 => new ConflictoExcepcion(id is null ? "Ya existe un registro con esa información." : "Ya existe un registro con esa clave (" + id.Value + ")."),
             _ => new ConflictoExcepcion(ex.Message)
         };
     }
