@@ -45,17 +45,17 @@ public class RepositorioCarInnovacionSqlServer : IRepositorioCarInnovacion
         return await conexion.QuerySingleOrDefaultAsync<CarInnovacion>(sql, new { id });
     }
 
-    public async Task CrearAsync(CarInnovacion entidad)
+    public async Task<int> CrearAsync(CarInnovacion entidad)
     {
         const string sql = """
-            INSERT INTO car_innovacion (id, nombre, descripcion, tipo, activo)
-            VALUES (@id, @nombre, @descripcion, @tipo, 1);
+            INSERT INTO car_innovacion (nombre, descripcion, tipo, activo)
+            OUTPUT INSERTED.id
+            VALUES (@nombre, @descripcion, @tipo, 1);
             """;
 
         await using var conexion = new SqlConnection(_cadenaConexion);
-        await conexion.ExecuteAsync(sql, new
+        return await conexion.QuerySingleAsync<int>(sql, new
         {
-            entidad.Id,
             entidad.Nombre,
             entidad.Descripcion,
             entidad.Tipo

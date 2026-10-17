@@ -13,7 +13,8 @@ namespace ApiInnovacion.Modelos;
 /// </summary>
 public class ActivAcademica
 {
-    public required int Id { get; set; }
+    // El id lo asigna SQL Server (secuencia): llega generado en la respuesta.
+    public int Id { get; set; }
     public required string Nombre { get; set; }
     public required int NumCreditos { get; set; }
     public required string Tipo { get; set; }

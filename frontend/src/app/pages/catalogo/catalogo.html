@@ -1,3 +1,8 @@
+<!-- =======================================================================
+     QUÉ ES: plantilla reutilizable de listas, filtros y formularios.
+     PAPEL: muestra relaciones por nombre; permite editar atributos cuando la
+            relación los tiene y deja las tablas puente puras en asignar/retirar.
+     ======================================================================= -->
 <section class="catalogo">
   <header class="cabecera">
     <h1>{{ config()?.nombreLegible ?? tabla() }}</h1>
@@ -5,8 +10,8 @@
       <input
         type="search"
         placeholder="Filtrar por texto..."
-        [ngModel]="filtro()"
-        (ngModelChange)="filtro.set($event)"
+        [value]="filtro()"
+        (input)="actualizarFiltro($event)"
         class="filtro"
       />
       <label class="limite">
@@ -19,8 +24,9 @@
         />
       </label>
       @if (config()) {
+        <!-- En una relación la acción de alta es asignar la pareja (§8). -->
         <button class="btn-crear" (click)="abrirCrear()">
-          {{ config()!.esPuente ? '+ Asignar' : '+ Crear' }}
+          {{ esCompuesta() ? '+ Asignar' : '+ Crear' }}
         </button>
       }
     </div>
@@ -36,6 +42,8 @@
     <p class="vacio">Cargando registros...</p>
   } @else if (registros().length === 0) {
     <p class="vacio">No hay registros.</p>
+  } @else if (registrosFiltrados().length === 0) {
+    <p class="vacio">No hay registros que coincidan con «{{ filtro().trim() }}».</p>
   } @else {
     <div class="tabla-contenedor">
       <table>
@@ -60,8 +68,8 @@
                 </span>
               </td>
               <td class="acciones">
-                @if (config()!.esPuente) {
-                  <!-- Las parejas solo se asignan y se retiran: sin Editar. -->
+                @if (!puedeEditar()) {
+                  <!-- Puentes puras: la pareja solo se asigna y se retira. -->
                   <button class="btn-eliminar" (click)="eliminar(fila)">Retirar</button>
                 } @else {
                   @if (config()!.nombre === 'programa') {
@@ -69,7 +77,9 @@
                     <a class="btn-detalle" [routerLink]="['/programas', fila['id']]">Detalle</a>
                   }
                   <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
-                  <button class="btn-eliminar" (click)="eliminar(fila)">Eliminar</button>
+                  <button class="btn-eliminar" (click)="eliminar(fila)">
+                    {{ esCompuesta() ? 'Retirar' : 'Eliminar' }}
+                  </button>
                 }
               </td>
             </tr>
@@ -82,11 +92,19 @@
   @if (mostrarFormulario() && config(); as cfg) {
     <div class="formulario">
       <h2>
-        {{ editando()!.esEdicion ? 'Editar' : (cfg.esPuente ? 'Asignar pareja' : 'Crear registro') }}
+        {{
+          editando()!.esEdicion
+            ? 'Editar'
+            : (esCompuesta() ? (cfg.permiteEdicion ? 'Asignar relación' : 'Asignar pareja') : 'Crear registro')
+        }}
       </h2>
-      @if (!cfg.esPuente) {
+      @if (!esCompuesta()) {
         <p class="nota">
-          La llave (<code>{{ cfg.llave }}</code>) solo se asigna al crear; no se edita después.
+          @if (cfg.campos.some(c => c.generado)) {
+            El identificador lo genera el sistema; no se captura.
+          } @else {
+            La llave (<code>{{ cfg.llave }}</code>) solo se asigna al crear; no se edita después.
+          }
         </p>
       }
 
@@ -94,7 +112,7 @@
 
       <form (ngSubmit)="guardar()">
         @for (campo of cfg.campos; track campo.campo) {
-          @if (!campo.soloLectura) {
+          @if (!campo.soloLectura && !campo.generado) {
             <div class="campo">
               <label>
                 {{ campo.etiqueta }}
@@ -142,7 +160,11 @@
 
         <div class="acciones-form">
           <button type="submit" class="btn-guardar">
-            {{ editando()!.esEdicion ? 'Guardar' : (cfg.esPuente ? 'Asignar' : 'Crear') }}
+            {{
+              editando()!.esEdicion
+                ? 'Guardar'
+                : (esCompuesta() ? 'Asignar' : 'Crear')
+            }}
           </button>
           <button type="button" class="btn-cancelar" (click)="cerrarFormulario()">Cancelar</button>
         </div>

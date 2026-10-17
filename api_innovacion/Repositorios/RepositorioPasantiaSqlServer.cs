@@ -41,7 +41,6 @@ public class RepositorioPasantiaSqlServer : IRepositorioPasantia
     public async Task<Pasantia> CrearAsync(Pasantia entidad)
     {
         var parametros = new DynamicParameters();
-        parametros.Add("id", entidad.Id);
         parametros.Add("nombre", entidad.Nombre);
         parametros.Add("pais", entidad.Pais);
         parametros.Add("empresa", entidad.Empresa);

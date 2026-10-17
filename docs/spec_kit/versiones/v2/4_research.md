@@ -134,43 +134,41 @@ provisto (sólo lo traen las tablas de usuarios, de la v3). Ver
 `db/03_activar_borrado_logico_v2.sql` (idempotente), igual que la v1 hizo con sus
 siete. Consecuencia: **todas** filtran `activo = 1` y el `DELETE` es un `UPDATE`.
 
-## D6 — `docente_departamento` y `alianza`: el docente de otro módulo
+## D6 — docente_departamento y alianza: catálogo local de docentes
 
-**Contexto.** El script declara `docente_departamento(docente INT, departamento
-INT, …)` con `FOREIGN KEY (departamento) REFERENCES programa(id)` — nótese que
-`departamento` apunta a **programa**. Pero **`docente` no tiene FK**: el docente
-pertenece al módulo de **Gestión Profesoral**, que vive en **otra base de datos**.
-Lo mismo pasa con el `docente` opcional de `alianza`.
+**Contexto.** El esquema original no declaraba una tabla docente ni una FK
+para el entero docente de docente_departamento y alianza. Eso obligaba a
+escribir códigos a mano, impedía mostrar nombres y permitía crear relaciones
+sin una ficha visible.
 
-**Opciones evaluadas:**
+**Decisión actualizada por el propietario del proyecto.** Incorporar un catálogo
+local mínimo docente(id IDENTITY, documento UNIQUE, nombre, activo). El ID
+interno se genera de forma incremental y es la FK de las dos relaciones; el
+número de documento se guarda aparte y nunca es PK. Los formularios cargan
+únicamente docentes activos y muestran sus nombres. En alianza, el responsable
+sigue siendo opcional.
 
-| Opción | Problema |
-|---|---|
-| (a) Desplegable de docentes cargado desde la API | **Imposible**: no hay tabla de docentes en `innovacion_curricular` ni endpoint que la exponga. |
-| (b) **Tratar `docente` como un identificador entero** (código/cédula del docente) digitado por el usuario | ✓ Es lo único que hay: no se puede poblar un desplegable sin fuente. |
-| (c) Inventar una tabla/endpoint de docentes | Anticipa trabajo fuera de alcance; viola "no se anticipa". |
+Esta decisión reemplaza la propuesta previa de tratar el docente como una clave
+externa escrita manualmente. No se crea una integración con una base externa de
+Gestión Profesoral ni se inventan códigos de docente.
 
-**Decisión: (b).** `docente` se maneja como un **entero identificador** (campo
-numérico), no como desplegable, y se documenta que su catálogo vive en el módulo
-de Gestión Profesoral (otra BD) y queda **fuera del alcance de la v2**. En
-`alianza`, `docente` es **opcional** (`NULL` permitido). Las demás FK de esas
-tablas (`departamento`→`programa`, `aliado`→`aliado`) **sí** son desplegables
-cargados desde la API.
+## D7 — Distinguir puentes puros de relaciones con atributos
 
-## D7 — Tablas puente: asignar y retirar, sin editar
+**Decisión para el Issue 3 de Felipe.** `programa_ac`, `programa_pe`,
+`programa_ci` y `an_programa` son puentes puros: su fila sólo afirma que dos
+registros están vinculados. Se asignan y retiran por pareja, sin PUT/PATCH ni
+botón de edición; repetir la pareja produce 409 por la PK compuesta.
 
-**Decisión.** Las seis puentes (`programa_ac`, `programa_pe`, `programa_ci`,
-`an_programa`, `enfoque_rc`, `aa_rc`) tienen PK compuesta (dos o más claves) y no
-tienen atributos propios que "editar" salvo en `aa_rc` (`componente`, `semestre`).
-El patrón es **asignar** (crear la pareja) y **retirar** (desactivarla); **no**
-hay `PUT` ni botón de editar (**tropiezo 9**): una pareja existe o no existe.
-Repetir la pareja la rechaza la **PK compuesta** → el servicio la traduce a
-**409**.
+`docente_departamento` y `alianza` también tienen PK compuesta, pero contienen
+datos de negocio propios (dedicación, modalidad y fechas; o fechas y docente
+responsable). El Issue 3 pide CRUD y los cinco procedimientos. Se puede editar
+ese contenido, pero las claves permanecen fijas en la ruta y no forman parte
+del body de PUT/PATCH.
 
-> `aa_rc` lleva `componente` y `semestre` (obligatorios) y `alianza`/
-> `docente_departamento` llevan fechas; esas son las tablas "puente con
-> atributos": se siguen manejando por pareja, con sus atributos como parte del
-> `INSERT`, sin edición posterior.
+Esta corrección resuelve la frase demasiado amplia del borrador anterior, que
+había extendido «sin editar» a todas las relaciones compuestas. No altera las
+decisiones de `enfoque_rc` ni `aa_rc`, que pertenecen al Issue de Valentina; sus
+operaciones se rigen por los contratos y la autoría de ese módulo.
 
 ## D8 — La envoltura en castellano (y su riesgo)
 
@@ -260,3 +258,22 @@ repositorio, modelo y formulario coincidan.
 archivos (`04_procedimientos_v2_emmanuel.sql`, `_valentina.sql`, `_felipe.sql`)
 para que cada integrante tenga su archivo versionable y la integración no genere
 conflictos en un único archivo gigante. El inicializador los corre a todos.
+
+## D15 — IDs internos automáticos y datos de demostración veraces
+
+**Decisión del propietario del proyecto.** Todo `id` que sea una PK interna se
+genera incrementalmente en SQL Server. Las tablas heredadas usan secuencias y
+valores por defecto para no reconstruir la base ni romper referencias; el
+catálogo local `docente` usa `IDENTITY`. El Frontend no pide el ID al crear y lo
+muestra en el listado o al consultar la ficha. Esta decisión actualiza el flujo
+de creación de la v1 sin cambiar sus capas ni sus verbos.
+
+Las claves con significado de negocio se conservan: el NIT de una organización,
+el número de documento de la persona, la resolución de acreditación, el código
+de registro y las claves compuestas no se reemplazan por un ID interno. El
+documento identifica al docente, pero no es su PK.
+
+Los ejemplos locales deben corresponder a entidades, normas, prácticas,
+estancias o reconocimientos documentados. Un premio se asocia sólo cuando la
+fuente confirma que pertenece a ese programa; las relaciones demostrativas no
+deben insinuar resultados académicos no comprobados.

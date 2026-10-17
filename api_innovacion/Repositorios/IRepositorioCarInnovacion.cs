@@ -12,7 +12,7 @@ public interface IRepositorioCarInnovacion
 {
     Task<List<CarInnovacion>> ObtenerTodosAsync(int limite);
     Task<CarInnovacion?> ObtenerPorIdAsync(int id);
-    Task CrearAsync(CarInnovacion entidad);
+    Task<int> CrearAsync(CarInnovacion entidad);
     Task<int> ActualizarAsync(int id, Dictionary<string, object> datos); // PUT y PATCH
     Task<int> EliminarAsync(int id);                                     // UPDATE activo = 0
 }

@@ -45,17 +45,17 @@ public class RepositorioUniversidadSqlServer : IRepositorioUniversidad
         return await conexion.QuerySingleOrDefaultAsync<Universidad>(sql, new { id });
     }
 
-    public async Task CrearAsync(Universidad entidad)
+    public async Task<int> CrearAsync(Universidad entidad)
     {
         const string sql = """
-            INSERT INTO universidad (id, nombre, tipo, ciudad, activo)
-            VALUES (@id, @nombre, @tipo, @ciudad, 1);
+            INSERT INTO universidad (nombre, tipo, ciudad, activo)
+            OUTPUT INSERTED.id
+            VALUES (@nombre, @tipo, @ciudad, 1);
             """;
 
         await using var conexion = new SqlConnection(_cadenaConexion);
-        await conexion.ExecuteAsync(sql, new
+        return await conexion.QuerySingleAsync<int>(sql, new
         {
-            entidad.Id,
             entidad.Nombre,
             entidad.Tipo,
             entidad.Ciudad

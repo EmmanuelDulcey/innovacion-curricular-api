@@ -14,7 +14,9 @@ namespace ApiInnovacion.Modelos;
 /// </summary>
 public class Programa
 {
-    public required int Id { get; set; }
+    // El id lo asigna SQL Server (secuencia): en la respuesta viene generado y
+    // por eso el servicio no lo exige al crear (5_data_model.md §2).
+    public int Id { get; set; }
     public required string Nombre { get; set; }
     public required string Tipo { get; set; }
     public required string Nivel { get; set; }

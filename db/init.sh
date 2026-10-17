@@ -5,14 +5,16 @@
 # contenedor `sqlserver-init` (docker-compose).
 #
 # Orden (fuente: 3_plan.md, Secciones 4.7 y 11):
-#   1. innovacion_curricular.ss.sql          -> crea las 25 tablas de la base
+#   1. innovacion_curricular.ss.sql          -> crea las 26 tablas de la base
 #   2. 01_activar_borrado_logico.sql         -> v1: `activo` en las 7 tablas sin FK
 #   3. 02_datos_iniciales.sql                -> v1: carga 218 areas y 6 universidades
 #   4. 03_activar_borrado_logico_v2.sql      -> v2: `activo` en las 15 tablas con FK
 #   5. 04_procedimientos_v2_*.sql            -> v2: procedimientos + disparador
+#   6. 05_identificadores_incrementales.sql  -> IDs internos generados por SQL
+#   7. 07_docente.sql                         -> catálogo auxiliar con IDENTITY
 #
 # Los pasos 1-3 son la base de la v1: sólo corren cuando la base NO existe, para
-# no volver a sembrar (no se borran cambios hechos por la API). Los pasos 4-5 son
+# no volver a sembrar (no se borran cambios hechos por la API). Los pasos 4-7 son
 # idempotentes y NO destructivos, así que se aplican SIEMPRE: migran una base de
 # la v1 a la v2 y son no-ops cuando ya están aplicados.
 # =============================================================================
@@ -43,7 +45,7 @@ estado="$(${SQLCMD[@]} -d master -h -1 -W -Q "SET NOCOUNT ON;
 IF DB_ID(N'innovacion_curricular') IS NULL
     SELECT 'missing';
 ELSE IF
-    (SELECT COUNT(*) FROM innovacion_curricular.sys.tables WHERE is_ms_shipped = 0) = 25
+    (SELECT COUNT(*) FROM innovacion_curricular.sys.tables WHERE is_ms_shipped = 0) IN (25, 26)
     AND (SELECT COUNT(*)
          FROM innovacion_curricular.sys.columns
          WHERE name = 'activo'
@@ -86,12 +88,15 @@ esac
 # una base de la v1 y para dejar lista una recien creada.
 #   * 03_activar_borrado_logico_v2.sql -> `activo` en las 15 tablas + contador
 #   * 04_procedimientos_v2_*.sql       -> procedimientos + disparador
+#   * 05_identificadores_incrementales.sql -> secuencias y valores por defecto
+#   * 06_datos_demostracion.sql            -> ejemplos académicos idempotentes
+#   * 07_docente.sql                       -> catálogo docente y FK locales
 # -----------------------------------------------------------------------------
 echo "[init] Aplicando los scripts de la v2 (idempotentes)."
 run_script /scripts/03_activar_borrado_logico_v2.sql
 
 shopt -s nullglob
-for script in /scripts/04_*.sql; do
+for script in /scripts/04_*.sql /scripts/05_*.sql /scripts/06_*.sql /scripts/07_*.sql; do
   run_script "$script"
 done
 

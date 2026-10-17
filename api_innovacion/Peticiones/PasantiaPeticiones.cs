@@ -3,14 +3,11 @@ using System.ComponentModel.DataAnnotations;
 namespace ApiInnovacion.Peticiones;
 
 /// <summary>
-/// Peticion del POST /api/pasantia: todo obligatorio, incluida la PK (id) y la
+/// Peticion del POST /api/pasantia: datos requeridos y la
 /// FK (programa). Fuente: docs/spec_kit/versiones/v2/6_contracts.md, Sección 8.
 /// </summary>
 public class PasantiaCrear
 {
-    [Required(ErrorMessage = "El campo id es obligatorio.")]
-    [Range(1, int.MaxValue, ErrorMessage = "El campo id debe ser un entero positivo.")]
-    public int? Id { get; set; }
 
     [Required(ErrorMessage = "El campo nombre es obligatorio.")]
     [StringLength(45, ErrorMessage = "El campo nombre no puede superar los 45 caracteres.")]

@@ -228,8 +228,11 @@ export class ProgramaDetalle {
 
     const peticiones: Record<string, Observable<RespuestaLista<CualquierRegistro> | null>> = {};
     for (const origen of origenes) {
+      // El desplegable de programas usa la ruta de apoyo de solo lectura
+      // (6_contracts.md §2), igual que la página de catálogo.
+      const ruta = origen === 'programa' ? 'opciones/programa' : origen;
       peticiones[origen] = this.api
-        .listar<CualquierRegistro>(origen, 1000)
+        .listar<CualquierRegistro>(ruta, 1000)
         .pipe(catchError(() => of(null)));
     }
 
@@ -286,8 +289,11 @@ export class ProgramaDetalle {
   agregarRenglon(seccion: Seccion) {
     const nuevo: CualquierRegistro = {};
     for (const campo of seccion.campos) {
+      // Las claves internas que genera SQL Server y las columnas derivadas no
+      // entran al formulario de alta.
+      if (campo.generado || campo.soloLectura) continue;
       nuevo[campo.campo] =
-        campo.tipo === 'desplegable' || campo.tipo === 'booleano' ? null : '';
+        campo.tipo === 'desplegable' || campo.tipo === 'booleano' || !campo.requerido ? null : '';
     }
 
     // En actividades académicas el vínculo con el programa abierto es `disenio`
@@ -325,7 +331,11 @@ export class ProgramaDetalle {
 
     const cuerpos = filas.map((fila) => {
       const cuerpo: Record<string, any> = {};
-      for (const campo of seccion.campos) cuerpo[campo.campo] = fila[campo.campo];
+      for (const campo of seccion.campos) {
+        // Claves generadas por la base y columnas derivadas: nunca viajan.
+        if (campo.generado || campo.soloLectura) continue;
+        cuerpo[campo.campo] = fila[campo.campo];
+      }
       // La pareja con el programa abierto la fija la pantalla (pasantía,
       // premio, acreditación y registro calificado no piden ese campo).
       if (seccion.tabla !== 'activ_academica') cuerpo['programa'] = this.idNumero();
@@ -387,6 +397,7 @@ export class ProgramaDetalle {
     filas.forEach((fila, indice) => {
       const renglon = filas.length > 1 ? ` (renglón ${indice + 1})` : '';
       for (const campo of seccion.campos) {
+        if (campo.generado || campo.soloLectura) continue;
         const valor = fila[campo.campo];
         const vacio = valor === undefined || valor === null || String(valor).trim() === '';
 

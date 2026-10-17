@@ -11,7 +11,7 @@ public interface IRepositorioAreaConocimiento
 {
     Task<List<AreaConocimiento>> ObtenerTodosAsync(int limite);
     Task<AreaConocimiento?> ObtenerPorIdAsync(int id);
-    Task CrearAsync(AreaConocimiento entidad);
+    Task<int> CrearAsync(AreaConocimiento entidad);
     Task<int> ActualizarAsync(int id, Dictionary<string, object> datos);
     Task<int> EliminarAsync(int id);
 }

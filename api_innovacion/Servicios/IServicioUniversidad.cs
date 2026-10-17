@@ -12,7 +12,7 @@ public interface IServicioUniversidad
 {
     Task<List<Universidad>> ObtenerTodosAsync(int limite);
     Task<Universidad> ObtenerPorIdAsync(int id);
-    Task CrearAsync(UniversidadCrear peticion);
+    Task<Universidad> CrearAsync(UniversidadCrear peticion);
     Task<int> ReemplazarAsync(int id, UniversidadReemplazo peticion);
     Task<int> ActualizarAsync(int id, UniversidadActualizar peticion);
     Task<int> EliminarAsync(int id);

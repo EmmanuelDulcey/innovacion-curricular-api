@@ -48,7 +48,8 @@ public class RepositorioProgramaSqlServer : IRepositorioPrograma
     public async Task<Programa> CrearAsync(Programa entidad)
     {
         var parametros = new DynamicParameters();
-        parametros.Add("id", entidad.Id);
+        // Sin "id": lo genera el procedimiento con la secuencia de la base y lo
+        // devuelve en la fila guardada.
         parametros.Add("nombre", entidad.Nombre);
         parametros.Add("tipo", entidad.Tipo);
         parametros.Add("nivel", entidad.Nivel);

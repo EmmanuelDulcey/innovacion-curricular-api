@@ -1,0 +1,292 @@
+# QUÉ ES: colección HTTP del Issue 3 (v2) para Rider.
+# PAPEL: ejecutar casos positivos y negativos con una BD que tenga maestros activos.
+# Sustituye los identificadores por registros reales. Requiere GET /api/programa
+# de la integración de Valentina; este archivo no crea ni modifica maestros.
+@api = http://localhost:8036
+@programa = 10
+@aliado = 900123456
+@area = 1
+@practica = 1
+@innovacion = 1
+@normativa = 1
+
+### docente_departamento: listar activos -> 200 o 204
+GET {{api}}/api/docente_departamento
+
+### docente_departamento: asignar -> 200 con datos y nombres
+POST {{api}}/api/docente_departamento
+Content-Type: application/json
+
+{"docente": 501, "departamento": {{programa}}, "dedicacion": "Tiempo completo", "modalidad": "Presencial", "fecha_ingreso": "2026-10-15", "fecha_salida": null}
+
+### docente_departamento: repetir la misma pareja -> 409
+POST {{api}}/api/docente_departamento
+Content-Type: application/json
+
+{"docente": 501, "departamento": {{programa}}, "dedicacion": "Tiempo completo", "modalidad": "Presencial", "fecha_ingreso": "2026-10-15", "fecha_salida": null}
+
+### docente_departamento: consultar por pareja -> 200
+GET {{api}}/api/docente_departamento/501/{{programa}}
+
+### docente_departamento: reemplazar atributos; las claves permanecen en la ruta -> 200
+PUT {{api}}/api/docente_departamento/501/{{programa}}
+Content-Type: application/json
+
+{"dedicacion": "Media", "modalidad": "Hibrido", "fecha_ingreso": "2026-10-20", "fecha_salida": null}
+
+### docente_departamento: actualizar solo la modalidad -> 200
+PATCH {{api}}/api/docente_departamento/501/{{programa}}
+Content-Type: application/json
+
+{"modalidad": "Virtual-Remoto"}
+
+### docente_departamento: PATCH sin cambios -> 400
+PATCH {{api}}/api/docente_departamento/501/{{programa}}
+Content-Type: application/json
+
+{}
+
+### docente_departamento: PATCH con salida anterior al ingreso -> 400
+PATCH {{api}}/api/docente_departamento/501/{{programa}}
+Content-Type: application/json
+
+{"fecha_salida": "2026-10-19"}
+
+### docente_departamento: padre inexistente -> 409
+POST {{api}}/api/docente_departamento
+Content-Type: application/json
+
+{"docente": 501, "departamento": 999999, "dedicacion": "Tiempo completo", "modalidad": "Presencial", "fecha_ingreso": "2026-10-15"}
+
+### docente_departamento: body inválido -> 422
+POST {{api}}/api/docente_departamento
+Content-Type: application/json
+
+{}
+
+### docente_departamento: fecha final anterior a la inicial -> 400
+POST {{api}}/api/docente_departamento
+Content-Type: application/json
+
+{"docente": 501, "departamento": {{programa}}, "dedicacion": "Tiempo completo", "modalidad": "Presencial", "fecha_ingreso": "2026-10-15", "fecha_salida": "2026-10-14"}
+
+### docente_departamento: retirar -> 200, filasEliminadas = 1
+DELETE {{api}}/api/docente_departamento/501/{{programa}}
+
+### docente_departamento: segundo retiro -> 404
+DELETE {{api}}/api/docente_departamento/501/{{programa}}
+
+
+### alianza: listar activos -> 200 o 204
+GET {{api}}/api/alianza
+
+### alianza: asignar -> 200 con datos y nombres
+POST {{api}}/api/alianza
+Content-Type: application/json
+
+{"aliado": {{aliado}}, "departamento": {{programa}}, "fecha_inicio": "2026-10-15", "fecha_fin": null, "docente": null}
+
+### alianza: repetir la misma pareja -> 409
+POST {{api}}/api/alianza
+Content-Type: application/json
+
+{"aliado": {{aliado}}, "departamento": {{programa}}, "fecha_inicio": "2026-10-15", "fecha_fin": null, "docente": null}
+
+### alianza: consultar por pareja -> 200
+GET {{api}}/api/alianza/{{aliado}}/{{programa}}
+
+### alianza: reemplazar atributos; la pareja permanece en la ruta -> 200
+PUT {{api}}/api/alianza/{{aliado}}/{{programa}}
+Content-Type: application/json
+
+{"fecha_inicio": "2026-10-20", "fecha_fin": "2026-12-31", "docente": null}
+
+### alianza: actualizar solo la fecha final -> 200
+PATCH {{api}}/api/alianza/{{aliado}}/{{programa}}
+Content-Type: application/json
+
+{"fecha_fin": "2027-01-15"}
+
+### alianza: PATCH sin cambios -> 400
+PATCH {{api}}/api/alianza/{{aliado}}/{{programa}}
+Content-Type: application/json
+
+{}
+
+### alianza: PATCH con fecha final anterior al inicio -> 400
+PATCH {{api}}/api/alianza/{{aliado}}/{{programa}}
+Content-Type: application/json
+
+{"fecha_fin": "2026-10-19"}
+
+### alianza: padre inexistente -> 409
+POST {{api}}/api/alianza
+Content-Type: application/json
+
+{"aliado": 999999, "departamento": {{programa}}, "fecha_inicio": "2026-10-15"}
+
+### alianza: body inválido -> 422
+POST {{api}}/api/alianza
+Content-Type: application/json
+
+{}
+
+### alianza: fecha final anterior a la inicial -> 400
+POST {{api}}/api/alianza
+Content-Type: application/json
+
+{"aliado": {{aliado}}, "departamento": {{programa}}, "fecha_inicio": "2026-10-15", "fecha_fin": "2026-10-14"}
+
+### alianza: retirar -> 200, filasEliminadas = 1
+DELETE {{api}}/api/alianza/{{aliado}}/{{programa}}
+
+### alianza: segundo retiro -> 404
+DELETE {{api}}/api/alianza/{{aliado}}/{{programa}}
+
+
+### programa_ac: listar activos -> 200 o 204
+GET {{api}}/api/programa_ac
+
+### programa_ac: asignar -> 200 con datos y nombres
+POST {{api}}/api/programa_ac
+Content-Type: application/json
+
+{"programa": {{programa}}, "area_conocimiento": {{area}}}
+
+### programa_ac: repetir la misma pareja -> 409
+POST {{api}}/api/programa_ac
+Content-Type: application/json
+
+{"programa": {{programa}}, "area_conocimiento": {{area}}}
+
+### programa_ac: consultar por pareja -> 200
+GET {{api}}/api/programa_ac/{{programa}}/{{area}}
+
+### programa_ac: padre inexistente -> 409
+POST {{api}}/api/programa_ac
+Content-Type: application/json
+
+{"programa": 999999, "area_conocimiento": {{area}}}
+
+### programa_ac: body inválido -> 422
+POST {{api}}/api/programa_ac
+Content-Type: application/json
+
+{}
+
+### programa_ac: retirar -> 200, filasEliminadas = 1
+DELETE {{api}}/api/programa_ac/{{programa}}/{{area}}
+
+### programa_ac: segundo retiro -> 404
+DELETE {{api}}/api/programa_ac/{{programa}}/{{area}}
+
+
+### programa_pe: listar activos -> 200 o 204
+GET {{api}}/api/programa_pe
+
+### programa_pe: asignar -> 200 con datos y nombres
+POST {{api}}/api/programa_pe
+Content-Type: application/json
+
+{"programa": {{programa}}, "practica_estrategia": {{practica}}}
+
+### programa_pe: repetir la misma pareja -> 409
+POST {{api}}/api/programa_pe
+Content-Type: application/json
+
+{"programa": {{programa}}, "practica_estrategia": {{practica}}}
+
+### programa_pe: consultar por pareja -> 200
+GET {{api}}/api/programa_pe/{{programa}}/{{practica}}
+
+### programa_pe: padre inexistente -> 409
+POST {{api}}/api/programa_pe
+Content-Type: application/json
+
+{"programa": 999999, "practica_estrategia": {{practica}}}
+
+### programa_pe: body inválido -> 422
+POST {{api}}/api/programa_pe
+Content-Type: application/json
+
+{}
+
+### programa_pe: retirar -> 200, filasEliminadas = 1
+DELETE {{api}}/api/programa_pe/{{programa}}/{{practica}}
+
+### programa_pe: segundo retiro -> 404
+DELETE {{api}}/api/programa_pe/{{programa}}/{{practica}}
+
+
+### programa_ci: listar activos -> 200 o 204
+GET {{api}}/api/programa_ci
+
+### programa_ci: asignar -> 200 con datos y nombres
+POST {{api}}/api/programa_ci
+Content-Type: application/json
+
+{"programa": {{programa}}, "car_innovacion": {{innovacion}}}
+
+### programa_ci: repetir la misma pareja -> 409
+POST {{api}}/api/programa_ci
+Content-Type: application/json
+
+{"programa": {{programa}}, "car_innovacion": {{innovacion}}}
+
+### programa_ci: consultar por pareja -> 200
+GET {{api}}/api/programa_ci/{{programa}}/{{innovacion}}
+
+### programa_ci: padre inexistente -> 409
+POST {{api}}/api/programa_ci
+Content-Type: application/json
+
+{"programa": 999999, "car_innovacion": {{innovacion}}}
+
+### programa_ci: body inválido -> 422
+POST {{api}}/api/programa_ci
+Content-Type: application/json
+
+{}
+
+### programa_ci: retirar -> 200, filasEliminadas = 1
+DELETE {{api}}/api/programa_ci/{{programa}}/{{innovacion}}
+
+### programa_ci: segundo retiro -> 404
+DELETE {{api}}/api/programa_ci/{{programa}}/{{innovacion}}
+
+
+### an_programa: listar activos -> 200 o 204
+GET {{api}}/api/an_programa
+
+### an_programa: asignar -> 200 con datos y nombres
+POST {{api}}/api/an_programa
+Content-Type: application/json
+
+{"aspecto_normativo": {{normativa}}, "programa": {{programa}}}
+
+### an_programa: repetir la misma pareja -> 409
+POST {{api}}/api/an_programa
+Content-Type: application/json
+
+{"aspecto_normativo": {{normativa}}, "programa": {{programa}}}
+
+### an_programa: consultar por pareja -> 200
+GET {{api}}/api/an_programa/{{normativa}}/{{programa}}
+
+### an_programa: padre inexistente -> 409
+POST {{api}}/api/an_programa
+Content-Type: application/json
+
+{"aspecto_normativo": {{normativa}}, "programa": 999999}
+
+### an_programa: body inválido -> 422
+POST {{api}}/api/an_programa
+Content-Type: application/json
+
+{}
+
+### an_programa: retirar -> 200, filasEliminadas = 1
+DELETE {{api}}/api/an_programa/{{normativa}}/{{programa}}
+
+### an_programa: segundo retiro -> 404
+DELETE {{api}}/api/an_programa/{{normativa}}/{{programa}}

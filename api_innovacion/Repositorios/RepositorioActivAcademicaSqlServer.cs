@@ -43,7 +43,7 @@ public class RepositorioActivAcademicaSqlServer : IRepositorioActivAcademica
     public async Task<ActivAcademica> CrearAsync(ActivAcademica entidad)
     {
         var parametros = new DynamicParameters();
-        parametros.Add("id", entidad.Id);
+        // Sin "id": lo genera el procedimiento con la secuencia de la base.
         parametros.Add("nombre", entidad.Nombre);
         parametros.Add("num_creditos", entidad.NumCreditos);
         parametros.Add("tipo", entidad.Tipo);

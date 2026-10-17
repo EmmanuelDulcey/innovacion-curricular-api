@@ -95,7 +95,6 @@ END
 GO
 
 CREATE OR ALTER PROCEDURE sp_crear_programa
-    @id                 INT,
     @nombre             VARCHAR(60),
     @tipo               VARCHAR(45),
     @nivel              VARCHAR(45),
@@ -115,14 +114,23 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM facultad WHERE id = @facultad AND activo = 1)
         THROW 50102, N'La facultad indicada no existe o esta inactiva.', 1;
 
-    -- `num_acreditaciones` NO aparece: lo inicializa su DEFAULT 0 y lo mantiene
-    -- el disparador; la API jamas lo escribe.
-    INSERT INTO programa (id, nombre, tipo, nivel, fecha_creacion, fecha_cierre,
+    -- El id interno lo genera la secuencia de SQL Server (05_identificadores_
+    -- incrementales.sql): el INSERT lo omite y OUTPUT captura el valor asignado
+    -- para poder devolver la fila guardada (contrato §4).
+    -- `num_acreditaciones` tampoco aparece: lo inicializa su DEFAULT 0 y lo
+    -- mantiene el disparador; la API jamas lo escribe.
+    DECLARE @id_generado INT;
+    DECLARE @insertado TABLE (id INT NOT NULL);
+
+    INSERT INTO programa (nombre, tipo, nivel, fecha_creacion, fecha_cierre,
                           numero_cohortes, cant_graduados, fecha_actualizacion,
                           ciudad, facultad, activo)
-    VALUES (@id, @nombre, @tipo, @nivel, @fecha_creacion, @fecha_cierre,
+    OUTPUT INSERTED.id INTO @insertado (id)
+    VALUES (@nombre, @tipo, @nivel, @fecha_creacion, @fecha_cierre,
             @numero_cohortes, @cant_graduados, @fecha_actualizacion,
             @ciudad, @facultad, 1);
+
+    SELECT @id_generado = id FROM @insertado;
 
     -- Tropiezo 8: se devuelve la fila recien guardada (misma forma que consultar).
     SELECT p.id,
@@ -141,7 +149,7 @@ BEGIN
            p.activo
       FROM programa p
       LEFT JOIN facultad f ON f.id = p.facultad
-     WHERE p.id = @id;
+     WHERE p.id = @id_generado;
 END
 GO
 
@@ -558,7 +566,6 @@ END
 GO
 
 CREATE OR ALTER PROCEDURE sp_crear_activ_academica
-    @id             INT,
     @nombre         VARCHAR(45),
     @num_creditos   INT,
     @tipo           VARCHAR(20),
@@ -581,12 +588,20 @@ BEGIN
        AND NOT EXISTS (SELECT 1 FROM programa WHERE id = @disenio AND activo = 1)
         THROW 50101, N'El programa indicado no existe o esta inactivo.', 1;
 
-    INSERT INTO activ_academica (id, nombre, num_creditos, tipo, area_formacion,
+    -- El id interno lo genera la secuencia de SQL Server; OUTPUT captura el
+    -- valor para devolver la fila guardada, igual que en programa.
+    DECLARE @id_generado INT;
+    DECLARE @insertado TABLE (id INT NOT NULL);
+
+    INSERT INTO activ_academica (nombre, num_creditos, tipo, area_formacion,
                                  h_acom, h_indep, idioma, espejo, entidad_espejo,
                                  pais_espejo, disenio, activo)
-    VALUES (@id, @nombre, @num_creditos, @tipo, @area_formacion,
+    OUTPUT INSERTED.id INTO @insertado (id)
+    VALUES (@nombre, @num_creditos, @tipo, @area_formacion,
             @h_acom, @h_indep, @idioma, @espejo, @entidad_espejo,
             @pais_espejo, @disenio, 1);
+
+    SELECT @id_generado = id FROM @insertado;
 
     SELECT a.id,
            a.nombre,
@@ -604,7 +619,7 @@ BEGIN
            a.activo
       FROM activ_academica a
       LEFT JOIN programa d ON d.id = a.disenio
-     WHERE a.id = @id;
+     WHERE a.id = @id_generado;
 END
 GO
 

@@ -20,7 +20,7 @@ La v2 **no cambia el stack de la v1**; sólo añade piezas.
 | Motor | **SQL Server 2022** (contenedor oficial) | Único motor |
 | **Nuevo:** procedimientos | `CREATE OR ALTER PROCEDURE` en `db/04_procedimientos_v2_*.sql` | Una sola vía al SQL; el repositorio no escribe SQL |
 | **Nuevo:** disparador | `trg_acreditacion_contador` (`AFTER INSERT, UPDATE, DELETE`) | Mantiene `programa.num_acreditaciones` |
-| Base de datos | `innovacion_curricular` (misma de la v1) | La BD viene dada; la v2 sólo agrega `activo`, `num_acreditaciones` y procedimientos |
+| Base de datos | `innovacion_curricular` (misma de la v1) | Conserva las tablas y datos; la v2 agrega relaciones, activos, contador, catálogo docente, secuencias y ejemplos idempotentes |
 | Frontend | **Angular** (TypeScript), *standalone*, `HttpClient` | Igual que la v1, ampliado |
 | Ejecución API / Front | `dotnet run` (8036) · `ng serve --host 0.0.0.0 --port 8037` | Igual que la v1 |
 
@@ -52,16 +52,19 @@ mueve.
 (raíz del proyecto)
 ├── docker-compose.yml                         # sin cambios estructurales; la API ya levanta todo
 ├── db/
-│   ├── innovacion_curricular.ss.sql           # script provisto (intacto)
+│   ├── innovacion_curricular.ss.sql           # esquema base + secuencias y catálogo docente
 │   ├── 01_activar_borrado_logico.sql          # v1: `activo` en las 7 tablas sin FK
 │   ├── 02_datos_iniciales.sql                 # v1: catálogos base
 │   ├── 03_activar_borrado_logico_v2.sql       # NUEVO: `activo` en las 15 tablas con FK
 │   ├── 04_procedimientos_v2_emmanuel.sql      # NUEVO: procs + disparador de las tablas de Emmanuel
 │   ├── 04_procedimientos_v2_valentina.sql     # NUEVO: procs + disparador (Valentina)
 │   ├── 04_procedimientos_v2_felipe.sql        # NUEVO: procs de puentes/personas (Felipe)
-│   └── init.sh                                # actualizado: corre 01..04 en orden, idempotente
+│   ├── 05_identificadores_incrementales.sql    # NUEVO: migración idempotente de claves internas
+│   ├── 06_datos_demostracion.sql               # NUEVO: ejemplos reales y reejecutables
+│   ├── 07_docente.sql                         # NUEVO: catálogo/FK de docentes para bases previas
+│   └── init.sh                                # corre los scripts en orden, sin borrar datos
 ├── api_innovacion/
-│   ├── Program.cs                             # DI de las 15 tablas + 409 + `version = "v2"`
+│   ├── Program.cs                             # DI de las tablas + 409 + `version = "v2"`
 │   ├── Respuestas/Respuestas.cs               # + RespuestaCreacion<T>  (POST devuelve la fila)
 │   ├── Excepciones/
 │   │   ├── NoEncontradoExcepcion.cs           # (v1) → 404
@@ -113,10 +116,10 @@ el **ensamblador** (`Program.cs`) conoce clases concretas.
 `QueryAsync<T>("sp_listar_facultad", parametros, commandType: CommandType.StoredProcedure)`.
 El SQL ya no vive en el repositorio.
 
-## 5. Los cinco procedimientos por tabla
+## 5. Procedimientos por tipo de clave
 
-Para cada una de las 15 tablas se define el mismo juego. Nombres y formas
-exactas:
+Las tablas con PK simple usan los cinco procedimientos CRUD. Sus nombres y
+formas exactas son:
 
 | Procedimiento | Hace | Devuelve |
 |---|---|---|
@@ -160,18 +163,26 @@ END
 > Cuáles tablas cuentan como "hijos activos" de `programa` se lista en
 > [5_data_model.md](5_data_model.md) §4.
 
-### 5.2 Tablas puente (asignar / retirar por pareja)
+### 5.2 Relaciones con clave compuesta
 
-Las tablas puente **no** tienen el juego anterior completo. Tienen:
+El Issue 3 distingue las relaciones con atributos de las cuatro tablas puente
+puras. `docente_departamento` y `alianza` tienen fechas y otros datos propios,
+por lo que su CRUD conserva cinco procedimientos estándar; la pareja de claves
+permanece inmutable y se pasa en la ruta de PUT/PATCH/DELETE:
 
-- `sp_listar_<puente>(@limite)` — filas activas **con los dos nombres** (JOIN
-  dentro del procedimiento).
-- `sp_asignar_<puente>(@pk1, @pk2, …)` — inserta la pareja (`activo = 1`);
-  devuelve la fila. Una pareja repetida la rechaza la **PK compuesta** (409).
-- `sp_retirar_<puente>(@pk1, @pk2)` — `UPDATE … SET activo = 0` de la pareja
-  (`@@ROWCOUNT`).
+- `sp_listar_<tabla>` y `sp_consultar_<tabla>` devuelven filas activas con los
+  nombres resueltos por JOIN.
+- `sp_crear_<tabla>` valida padres activos, inserta y devuelve la fila guardada.
+- `sp_actualizar_<tabla>` actualiza únicamente atributos y devuelve filas
+  afectadas; no recibe claves nuevas para sustituir la pareja.
+- `sp_eliminar_<tabla>` marca `activo = 0` y devuelve filas afectadas.
 
-No hay `PUT` ni edición: una pareja existe o no existe (tropiezo 9).
+Las cuatro puentes puras de Felipe (`programa_ac`, `programa_pe`, `programa_ci`,
+`an_programa`) conservan cuatro procedimientos: listar, consultar, asignar y
+retirar. No tienen actualización ni botón de editar porque representan sólo la
+pertenencia entre dos registros. Para ambos patrones, los procedimientos
+comprueban que las maestras estén activas: la FK física no detecta por sí sola
+una maestra retirada lógicamente.
 
 ## 6. Repositorio: sólo procedimientos, con `DynamicParameters`
 
@@ -278,11 +289,14 @@ La v2 depende de que el **nombre de columna** (o de alias) coincida con la
 cambia es lo que corre `sqlserver-init`:
 
 ```
-1. innovacion_curricular.ss.sql        (provisto: 25 tablas)         ← intacto
-2. 01_activar_borrado_logico.sql       (v1: activo en 7 tablas)      ← intacto
-3. 02_datos_iniciales.sql              (v1: catálogos base)          ← intacto
+1. innovacion_curricular.ss.sql        (26 tablas en instalaciones nuevas)
+2. 01_activar_borrado_logico.sql       (v1: activo en 7 catálogos)
+3. 02_datos_iniciales.sql              (v1: áreas y universidades)
 4. 03_activar_borrado_logico_v2.sql    (v2: activo en 15 tablas)     ← NUEVO
 5. 04_procedimientos_v2_*.sql          (v2: procs + disparador)      ← NUEVO
+6. 05_identificadores_incrementales.sql (IDs internos, conservando los actuales)
+7. 06_datos_demostracion.sql           (muestras académicas idempotentes)
+8. 07_docente.sql                      (catálogo local para bases previas)
 ```
 
 Todos los pasos son **idempotentes** (`IF COL_LENGTH(...) IS NULL`,
@@ -302,9 +316,11 @@ El detalle de páginas, componentes y flujo vive en
   encadenar peticiones (tropiezo 5); cada uno muestra el nombre, envía la clave
   y sólo ofrece activos.
 - **«(ninguna)» → `null`** en FK opcionales; nunca `""` (tropiezo 4).
-- **Tablas puente sin botón Editar**: sólo asignar/retirar.
+- **Puentes puros sin botón Editar**: sólo asignar/retirar. `alianza` y
+  `docente_departamento` permiten editar sus atributos, sin cambiar las claves.
 - **`pages/programa-detalle`** (nueva): maestro-detalle de `programa`.
-- `api.service.ts` gana `asignar(tabla, pareja)` y `retirar(tabla, pk1, pk2)`.
+- `api.service.ts` gana `asignar(tabla, pareja)` y `retirar(tabla, pk1, pk2)`;
+  las relaciones con atributos también usan PUT/PATCH por pareja.
 - El **dashboard** y la **nav-bar** crecen solos: se generan desde la lista
   `TABLAS`, a la que sólo se le agregan las 15 entradas nuevas.
 - **409 en pantalla:** el `mensaje` castellano del conflicto se muestra como un

@@ -59,20 +59,29 @@
 - [ ] **Valentina:** procedimientos + capas de `acreditacion` (PK `resolucion`),
   `registro_calificado` (PK `codigo`), `activ_academica` (**FK opcional
   `disenio`** → `null`).
-- [ ] **Felipe:** procedimientos + capas de `docente_departamento` (PK compuesta,
-  `docente` externo, fechas) y `alianza` (PK compuesta, fechas, `docente`
+- [x] **Felipe:** procedimientos + capas de `docente_departamento` (PK compuesta,
+  `docente` local con ID automático, fechas) y `alianza` (PK compuesta, fechas, `docente`
   opcional). Validar fechas coherentes → 400.
+- [x] Catálogo auxiliar `docente`: ID interno incremental, documento separado,
+  listado/formulario, selección por nombre en sus relaciones y retiro lógico.
+- [x] **Verificar Felipe:** create/list/get/PUT/PATCH/DELETE para ambas
+  relaciones en una BD temporal aislada; claves inmutables y nombres resueltos;
+  PATCH vacío y fechas inválidas → 400; duplicado → 409; segundo retiro → 404.
 - **Verificar:** cada tabla lista/crea/retira por `curl`, con los nombres de FK en
   el listado.
 
 ## Fase 4 — Tablas puente (Valentina y Felipe)
 
 - [ ] **Valentina:** `enfoque_rc`, `aa_rc` (con `componente` y `semestre`).
-- [ ] **Felipe:** `programa_ac`, `programa_pe`, `programa_ci`, `an_programa`.
-- [ ] Procedimientos `sp_listar_`, `sp_asignar_`, `sp_retirar_` (JOIN de nombres
-  dentro del procedimiento). **Sin `PUT`.**
-- [ ] Servicio: pareja duplicada → 409; FK inexistente → 409.
+- [x] **Felipe:** `programa_ac`, `programa_pe`, `programa_ci`, `an_programa`.
+- [x] Procedimientos `sp_listar_`, `sp_consultar_`, `sp_asignar_`,
+  `sp_retirar_` (JOIN de nombres dentro del procedimiento). Las cuatro puentes
+  puras siguen **sin PUT/PATCH**.
+- [x] Servicio: pareja duplicada → 409; FK inexistente → 409.
 - **Verificar:** asignar → repetir (409) → retirar (200) → repetir retiro (404).
+- [x] **Verificar Felipe:** ejecutar asignar → duplicar (409) → consultar →
+  retirar → segundo retiro (404) para las cuatro puentes en una BD temporal
+  aislada; validar también padres inexistentes → 409.
 
 ## Fase 5 — El disparador (Valentina)
 
@@ -88,9 +97,11 @@
   **FK** (→ desplegable), **fecha** (→ input de fecha) y **opcional** (→
   «(ninguna)»).
 - [ ] `pages/catalogo`: pintar desplegables de FK (cargados en paralelo con
-  `forkJoin`, sólo activos), enviar `null` en «(ninguna)», y **ocultar el botón
-  Editar** en las puentes (sólo asignar/retirar).
-- [ ] `api.service.ts`: `asignar(tabla, pareja)` y `retirar(tabla, pk1, pk2)`.
+  `forkJoin`, sólo activos), enviar `null` en «(ninguna)», editar los atributos
+  de `alianza`/`docente_departamento` con las claves bloqueadas y ocultar Editar
+  en las cuatro puentes puras.
+- [ ] `api.service.ts`: `asignar(tabla, pareja)`, `retirar(tabla, pk1, pk2)` y
+  PUT/PATCH por pareja para las relaciones con atributos.
 - [ ] `pages/programa-detalle` (Valentina): maestro-detalle de `programa`
   ([9_frontend.md](9_frontend.md) §8).
 - [ ] Mostrar el **409** con su mensaje castellano, sin jerga.
@@ -139,12 +150,18 @@
 - [ ] Completar `GUIA_IA2_VALENTINA.md`.
 
 ### Felipe — Issue 3
-- [ ] `docente_departamento`, `alianza`, `programa_ac`, `programa_pe`,
+- [x] `docente_departamento`, `alianza`, `programa_ac`, `programa_pe`,
   `programa_ci`, `an_programa`.
-- [ ] Validación de fechas coherentes.
+- [x] Validación de fechas coherentes.
 - [ ] Criterios 2, 3, 5, 6, 7, 8, 10, 11.
-- [ ] Completar `GUIA_IA2_FELIPE.md`.
+- [x] Completar `GUIA_IA2_FELIPE.md`.
+
+> Issue 3: `dotnet build` pasa sin advertencias; 96 pruebas de capas y el build
+> Angular pasan; 46 respuestas HTTP de CRUD en BD temporal aislada y siete
+> respuestas 409 por padres inexistentes pasan. La revisión visual del navegador
+> queda como validación manual. El maestro-detalle de `programa` pertenece al
+> módulo responsable y no está en la rama de Felipe.
 
 > **Recordatorio de ramas:** nadie trabaja en `main`; cada quien en
-> `rama-emmanuel-v2`, `rama-valentina-v2`, `rama-felipe-v2`; todo entra por PR y
+> `rama-emmanuel-v2`, `rama-valentina-v2`, `felipe-correa`; todo entra por PR y
 > sólo el encargado del main integra.

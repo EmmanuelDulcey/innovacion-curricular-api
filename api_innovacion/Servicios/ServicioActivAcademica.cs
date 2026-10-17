@@ -42,7 +42,7 @@ public class ServicioActivAcademica : IServicioActivAcademica
     {
         var entidad = new ActivAcademica
         {
-            Id = peticion.Id!.Value,
+            // Sin Id: lo genera SQL Server al insertar y vuelve en la fila.
             Nombre = peticion.Nombre!,
             NumCreditos = peticion.NumCreditos!.Value,
             Tipo = peticion.Tipo!,
@@ -62,7 +62,8 @@ public class ServicioActivAcademica : IServicioActivAcademica
         }
         catch (SqlException ex)
         {
-            throw TraducirSqlException(ex, peticion.Id!.Value);
+            // Al crear no hay clave enviada por el cliente.
+            throw TraducirSqlException(ex, null);
         }
     }
 
@@ -147,13 +148,15 @@ public class ServicioActivAcademica : IServicioActivAcademica
         return filas;
     }
 
-    private static Exception TraducirSqlException(SqlException ex, int id)
+    private static Exception TraducirSqlException(SqlException ex, int? id)
     {
         return ex.Number switch
         {
             50101 => new ConflictoExcepcion("El programa indicado no existe o está inactivo."),
             547 => new ConflictoExcepcion("El programa indicado no existe o está inactivo."),
-            2627 or 2601 => new ConflictoExcepcion($"Ya existe un registro con esa clave ({id})."),
+            2627 or 2601 => new ConflictoExcepcion(id is null
+                ? "Ya existe un registro con esa información."
+                : $"Ya existe un registro con esa clave ({id})."),
             _ => ex
         };
     }

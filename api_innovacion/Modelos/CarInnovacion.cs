@@ -7,7 +7,7 @@ namespace ApiInnovacion.Modelos;
 /// </summary>
 public class CarInnovacion
 {
-    public required int Id { get; set; }
+    public int Id { get; set; }
     public required string Nombre { get; set; }
 
     // En la base es VARCHAR(MAX): no tiene limite practico de longitud.

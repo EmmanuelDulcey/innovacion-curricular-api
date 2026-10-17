@@ -71,13 +71,14 @@
             @for (fila of borradores()[seccion.tabla]; track $index) {
               <div class="renglon">
                 @for (campo of seccion.campos; track campo.campo) {
-                  <div class="campo">
-                    <label>
-                      {{ campo.etiqueta }}
-                      @if (campo.requerido) {
-                        <span class="req">*</span>
-                      }
-                    </label>
+                  @if (!campo.soloLectura && !campo.generado) {
+                    <div class="campo">
+                      <label>
+                        {{ campo.etiqueta }}
+                        @if (campo.requerido) {
+                          <span class="req">*</span>
+                        }
+                      </label>
                     @if (campo.tipo === 'desplegable' || campo.tipo === 'booleano') {
                       <select
                         [(ngModel)]="fila[campo.campo]"
@@ -109,7 +110,8 @@
                         step="1"
                       />
                     }
-                  </div>
+                    </div>
+                  }
                 }
                 <button type="button" class="btn-cancelar" (click)="quitarRenglon(seccion, $index)">
                   Quitar renglón

@@ -49,7 +49,7 @@ public class ServicioPrograma : IServicioPrograma
     {
         var entidad = new Programa
         {
-            Id = peticion.Id!.Value,
+            // Sin Id: lo genera SQL Server al insertar y vuelve en la fila.
             Nombre = peticion.Nombre!,
             Tipo = peticion.Tipo!,
             Nivel = peticion.Nivel!,
@@ -68,7 +68,9 @@ public class ServicioPrograma : IServicioPrograma
         }
         catch (SqlException ex)
         {
-            throw TraducirSqlException(ex, peticion.Id!.Value);
+            // Al crear no hay clave enviada por el cliente: el mensaje de una
+            // clave repetida usa el texto genérico.
+            throw TraducirSqlException(ex, null);
         }
     }
 
@@ -165,7 +167,7 @@ public class ServicioPrograma : IServicioPrograma
     /// relanza el SqlException original y el controlador responde 500 (un 409
     /// solo sale por integridad referencial o claves; contrato §10).
     /// </summary>
-    private static Exception TraducirSqlException(SqlException ex, int id)
+    private static Exception TraducirSqlException(SqlException ex, int? id)
     {
         return ex.Number switch
         {
@@ -173,7 +175,9 @@ public class ServicioPrograma : IServicioPrograma
             50102 => new ConflictoExcepcion("La facultad indicada no existe o está inactiva."),
             // Respaldo: violacion real de la restriccion FK (carrera).
             547 => new ConflictoExcepcion("La facultad indicada no existe o está inactiva."),
-            2627 or 2601 => new ConflictoExcepcion($"Ya existe un registro con esa clave ({id})."),
+            2627 or 2601 => new ConflictoExcepcion(id is null
+                ? "Ya existe un registro con esa información."
+                : $"Ya existe un registro con esa clave ({id})."),
             _ => ex
         };
     }

@@ -1,8 +1,13 @@
+// =============================================================================
+// QUÉ ES: página genérica de listado y formulario para /tablas/:tabla.
+// PAPEL: configura el catálogo desde catalogo.ts y concentra el filtrado en vivo,
+//       las opciones de claves y las operaciones sobre cada registro o relación.
+// =============================================================================
 import { Component, computed, effect, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
 import { MensajeError } from '../../components/mensaje-error/mensaje-error';
 import {
@@ -18,7 +23,15 @@ import {
 
 // Pagina generica de CRUD /tablas/:tabla (RF9, 9_frontend.md §9). Recibe la
 // tabla por ruta (withComponentInputBinding), configura columnas y formulario a
-// partir de CATALOGOS y usa api.service para los cinco verbos.
+// partir de CATALOGOS y usa api.service para los verbos de cada tabla.
+//
+// Dos familias de tablas comparten esta pagina:
+//  * PK simple: crear / editar / eliminar como en la v1. Si la llave es
+//    interna (`generado`), SQL Server la asigna y el formulario nunca la pide.
+//  * identidad compuesta (relaciones/puentes): la pareja viaja en la ruta.
+//    Las puentes puras solo se asignan y retiran; docente_departamento y
+//    alianza ademas permiten editar sus atributos (PUT por pareja), sin
+//    cambiar las claves (6_contracts.md §8).
 @Component({
   selector: 'app-catalogo',
   imports: [FormsModule, MensajeError, RouterLink],
@@ -40,6 +53,8 @@ export class Catalogo {
   // Opciones de los desplegables de clave foranea, por tabla maestra de origen
   // (9_frontend.md §8). Se cargan en paralelo al listado.
   readonly opciones = signal<Record<string, OpcionFk[]>>({});
+  readonly erroresOpciones = signal<Record<string, boolean>>({});
+  readonly opcionesPendientes = signal(false);
 
   // Estado del formulario (crear/editar).
   readonly editando = signal<{ fila: CualquierRegistro; esEdicion: boolean } | null>(null);
@@ -73,6 +88,13 @@ export class Catalogo {
     );
   });
 
+  // Escuchar el evento `input` actualiza el filtro en cada tecla y evita
+  // depender de que el usuario confirme una búsqueda con Enter o un botón.
+  actualizarFiltro(evento: Event): void {
+    const entrada = evento.target;
+    if (entrada instanceof HTMLInputElement) this.filtro.set(entrada.value);
+  }
+
   constructor(private readonly api: ApiService) {}
 
   async cargar(version = this.cargaVersion) {
@@ -103,6 +125,8 @@ export class Catalogo {
   // tabla maestra, en paralelo). Si una maestra falla o esta vacia, su lista
   // queda vacia y el <select> solo muestra el texto de relleno.
   private async cargarOpciones(cfg: TablaConfig, version: number) {
+    this.opcionesPendientes.set(true);
+    this.erroresOpciones.set({});
     const origenes = [
       ...new Set(
         cfg.campos
@@ -113,14 +137,22 @@ export class Catalogo {
 
     if (origenes.length === 0) {
       this.opciones.set({});
+      this.opcionesPendientes.set(false);
       return;
     }
 
-    const peticiones: Record<string, Observable<RespuestaLista<CualquierRegistro> | null>> = {};
+    type ResultadoOpcion = { respuesta: RespuestaLista<CualquierRegistro> | null; fallo: boolean };
+    const peticiones: Record<string, Observable<ResultadoOpcion>> = {};
     for (const origen of origenes) {
+      // El CRUD de programa pertenece a otro módulo; esta ruta de lectura
+      // (6_contracts.md §2) provee sus opciones activas sin ocupar /api/programa.
+      const ruta = origen === 'programa' ? 'opciones/programa' : origen;
       peticiones[origen] = this.api
-        .listar<CualquierRegistro>(origen, 1000)
-        .pipe(catchError(() => of(null)));
+        .listar<CualquierRegistro>(ruta, 1000)
+        .pipe(
+          map((respuesta) => ({ respuesta, fallo: false })),
+          catchError(() => of({ respuesta: null, fallo: true })),
+        );
     }
 
     try {
@@ -128,21 +160,39 @@ export class Catalogo {
       if (version !== this.cargaVersion) return;
 
       const mapa: Record<string, OpcionFk[]> = {};
+      const fallos: Record<string, boolean> = {};
       for (const origen of origenes) {
         const llave = CATALOGOS[origen]?.llave ?? 'id';
-        const etiqueta = cfg.campos.find((campo) => campo.origen === origen)?.origenEtiqueta ?? 'nombre';
-        mapa[origen] = (resultados[origen]?.datos ?? []).map((item) => ({
+        const campoFk = cfg.campos.find((campo) => campo.origen === origen);
+        const etiqueta = campoFk?.origenEtiqueta ?? 'nombre';
+        const subEtiqueta = campoFk?.origenSubEtiqueta;
+        fallos[origen] = resultados[origen]?.fallo ?? false;
+        mapa[origen] = (resultados[origen]?.respuesta?.datos ?? []).map((item) => ({
           valor: item[llave],
-          etiqueta: this.etiquetaDe(item, etiqueta, llave),
+          // Cada maestra aporta su etiqueta legible. Con `origenSubEtiqueta` se
+          // agrega un segundo dato para desambiguar (área — disciplina); si no,
+          // `etiquetaDe` resuelve etiquetas compuestas con '+' y cae a la clave.
+          etiqueta: subEtiqueta
+            ? `${item[etiqueta] ?? ''} — ${item[subEtiqueta] ?? ''}`
+            : this.etiquetaDe(item, etiqueta, llave),
         }));
       }
       this.opciones.set(mapa);
+      this.erroresOpciones.set(fallos);
     } catch {
-      if (version === this.cargaVersion) this.opciones.set({});
+      if (version === this.cargaVersion) {
+        this.opciones.set({});
+        this.erroresOpciones.set(Object.fromEntries(origenes.map((origen) => [origen, true])));
+      }
+    } finally {
+      if (version === this.cargaVersion) this.opcionesPendientes.set(false);
     }
   }
 
   opcionesDe(campo: CampoConfig): OpcionFk[] {
+    if (campo.opcionesFijas) {
+      return campo.opcionesFijas.map((valor) => ({ valor, etiqueta: valor }));
+    }
     return campo.origen ? this.opciones()[campo.origen] ?? [] : [];
   }
 
@@ -178,12 +228,13 @@ export class Catalogo {
   abrirCrear() {
     const cfg = this.config()!;
     const fila: Record<string, any> = {};
-    // Un desplegable (y un Sí/No) arranca en null, su opcion de relleno; el
-    // resto en cadena vacia. Asi el select no queda con un valor inexistente
-    // (9_frontend.md §8). Las columnas de solo lectura no entran al formulario.
+    // Los desplegables, los Sí/No y los campos opcionales arrancan en null (la
+    // opción de relleno); el resto, en cadena vacía. Las columnas generadas
+    // por SQL Server y las de solo lectura no entran al formulario.
     for (const campo of cfg.campos) {
-      if (campo.soloLectura) continue;
-      fila[campo.campo] = campo.tipo === 'desplegable' || campo.tipo === 'booleano' ? null : '';
+      if (campo.soloLectura || campo.generado) continue;
+      fila[campo.campo] =
+        campo.tipo === 'desplegable' || campo.tipo === 'booleano' || !campo.requerido ? null : '';
     }
     this.formaSeleccionada(fila, false);
   }
@@ -214,16 +265,39 @@ export class Catalogo {
     this.errorForm.set(null);
   }
 
+  // Una relación tiene identidad compuesta: sus DOS claves viajan en la ruta
+  // (orden del script) y la fila se maneja como pareja, no como registro suelto.
+  esCompuesta(): boolean {
+    const cfg = this.config();
+    return cfg !== undefined && (cfg.llaves !== undefined || cfg.esRelacion === true || cfg.esPuente === true);
+  }
+
+  // Solo las relaciones con atributos propios (permiteEdicion) tienen botón
+  // Editar: su PUT conserva las claves y cambia únicamente los atributos.
+  // Las cuatro puentes puras se quedan en asignar/retirar (tropiezo 9).
+  puedeEditar(): boolean {
+    const cfg = this.config();
+    return cfg !== undefined && (!this.esCompuesta() || cfg.permiteEdicion === true);
+  }
+
+  // Clave estable de una fila para el @for y las acciones: la pareja completa
+  // en las relaciones, la llave simple en el resto.
+  claveDe(fila: CualquierRegistro): string {
+    const cfg = this.config()!;
+    return cfg.llaves
+      ? cfg.llaves.map((llave) => String(fila[llave])).join('|')
+      : String(fila[cfg.llave]);
+  }
+
   async eliminar(fila: CualquierRegistro) {
     const cfg = this.config()!;
-    const pregunta = cfg.esPuente ? '¿Retirar esta pareja?' : '¿Eliminar este registro?';
+    const pregunta = this.esCompuesta() ? '¿Retirar esta relación?' : '¿Eliminar este registro?';
     if (!window.confirm(pregunta)) return;
 
     try {
-      if (cfg.esPuente) {
-        // Retirar una pareja lleva las DOS claves de la PK, en su orden (§8.2).
-        const llaves = this.llavesDe(cfg);
-        await lastValueFrom(this.api.retirar(cfg.nombre, fila[llaves[0]], fila[llaves[1]]));
+      if (cfg.llaves) {
+        // Retirar una relación lleva las DOS claves de la PK, en su orden (§8.2).
+        await lastValueFrom(this.api.retirar(cfg.nombre, fila[cfg.llaves[0]], fila[cfg.llaves[1]]));
       } else {
         await lastValueFrom(this.api.eliminar(cfg.nombre, fila[cfg.llave]));
       }
@@ -232,21 +306,6 @@ export class Catalogo {
     } catch (error) {
       this.error.set(error as ApiError);
     }
-  }
-
-  // Campos que forman la PK, en el orden de la tabla: las tablas normales
-  // tienen una llave; las puentes, dos (una pareja). `llave` sigue existiendo
-  // para el resto de la pagina, que solo necesita la primera.
-  private llavesDe(cfg: TablaConfig): string[] {
-    return cfg.campos.filter((campo) => campo.esLlave).map((campo) => campo.campo);
-  }
-
-  // Clave de una fila para el @for y para el detalle: en las puentes es la
-  // pareja completa, porque una sola columna no identifica la fila.
-  claveDe(fila: CualquierRegistro): string {
-    const llaves = this.llavesDe(this.config()!);
-    if (llaves.length > 1) return llaves.map((campo) => fila[campo]).join('/');
-    return String(fila[this.config()!.llave]);
   }
 
   async guardar() {
@@ -260,20 +319,38 @@ export class Catalogo {
     }
     this.erroresPorCampo.set({});
 
-    const id = this.forma[cfg.llave];
     const body: Record<string, any> = {};
     for (const campo of cfg.campos) {
-      // Las columnas de solo lectura (num_acreditaciones) nunca viajan en el body.
-      if (campo.soloLectura) continue;
-      if (!esEdicion || campo.editable) body[campo.campo] = this.forma[campo.campo];
+      // Las claves que genera SQL Server y las columnas derivadas (el contador
+      // del disparador) nunca viajan en el body.
+      if (campo.generado || campo.soloLectura) continue;
+      if (!esEdicion || campo.editable) {
+        const valor = this.forma[campo.campo];
+        // Los opcionales vacíos viajan como null, nunca como cadena vacía.
+        body[campo.campo] = !campo.requerido && (valor === '' || valor === undefined) ? null : valor;
+      }
     }
 
     try {
-      if (cfg.esPuente) {
-        // Una puente solo se asigna: la pareja existe o no existe (sin PUT).
-        await lastValueFrom(this.api.asignar(cfg.nombre, body));
+      if (cfg.llaves) {
+        if (esEdicion) {
+          // PUT por pareja: las claves identifican la fila y no cambian; el
+          // body lleva solo los atributos editables.
+          const original = this.editando()!.fila;
+          await lastValueFrom(
+            this.api.reemplazarRelacion(
+              cfg.nombre,
+              original[cfg.llaves[0]],
+              original[cfg.llaves[1]],
+              body,
+            ),
+          );
+        } else {
+          // Asignar la pareja (POST de la relación).
+          await lastValueFrom(this.api.asignar(cfg.nombre, body));
+        }
       } else if (esEdicion) {
-        await lastValueFrom(this.api.reemplazar(cfg.nombre, id, body));
+        await lastValueFrom(this.api.reemplazar(cfg.nombre, this.forma[cfg.llave], body));
       } else {
         await lastValueFrom(this.api.crear(cfg.nombre, body));
       }
@@ -299,7 +376,7 @@ export class Catalogo {
   private validarFormulario(cfg: TablaConfig): Record<string, string> {
     const errores: Record<string, string> = {};
     for (const campo of cfg.campos) {
-      if (campo.soloLectura || this.esSoloLectura(campo)) continue;
+      if (campo.soloLectura || campo.generado || this.esSoloLectura(campo)) continue;
 
       const valor = this.forma[campo.campo];
       const vacio = valor === undefined || valor === null || String(valor).trim() === '';
@@ -310,15 +387,28 @@ export class Catalogo {
       }
       if (!vacio) {
         const texto = String(valor).trim();
-        if (campo.tipo === 'entero' && (Number.isNaN(Number(texto)) || Number(texto) <= 0)) {
-          errores[campo.campo] = `El campo ${campo.campo} debe ser un entero positivo.`;
-          continue;
+        if (campo.tipo === 'entero') {
+          const numero = Number(texto);
+          // Las llaves naturales deben ser positivas; los contadores
+          // (num_creditos, h_acom, h_indep) admiten 0, igual que la API.
+          if (campo.esLlave && (!Number.isInteger(numero) || numero <= 0)) {
+            errores[campo.campo] = `El campo ${campo.campo} debe ser un entero positivo.`;
+            continue;
+          }
+          if (!campo.esLlave && (!Number.isInteger(numero) || numero < 0)) {
+            errores[campo.campo] = `El campo ${campo.campo} no puede ser negativo.`;
+            continue;
+          }
         }
         // El mensaje es el mismo que devuelve la API en el 422, para que el
         // usuario vea el texto idéntico venga de donde venga la validación
-        // (6_contracts.md §4.7). La API sigue siendo la autoridad final.
+        // (6_contracts.md §4.3). La API sigue siendo la autoridad final.
         if (campo.tipo === 'correo' && !this.esCorreo(texto)) {
           errores[campo.campo] = `El campo ${campo.campo} debe tener un formato válido.`;
+          continue;
+        }
+        if (campo.opcionesFijas && !campo.opcionesFijas.includes(texto)) {
+          errores[campo.campo] = `Seleccione una opción válida para ${campo.etiqueta}.`;
           continue;
         }
         if (campo.maximo !== null && texto.length > campo.maximo) {
@@ -326,12 +416,21 @@ export class Catalogo {
         }
       }
     }
+    // Coherencia de fechas propias de las relaciones de Felipe (6_contracts §8.3).
+    if (cfg.nombre === 'alianza' && this.forma['fecha_fin'] && this.forma['fecha_inicio']
+      && this.forma['fecha_fin'] < this.forma['fecha_inicio']) {
+      errores['fecha_fin'] = 'La fecha de fin no puede ser anterior a la fecha de inicio.';
+    }
+    if (cfg.nombre === 'docente_departamento' && this.forma['fecha_salida'] && this.forma['fecha_ingreso']
+      && this.forma['fecha_salida'] < this.forma['fecha_ingreso']) {
+      errores['fecha_salida'] = 'La fecha de salida no puede ser anterior a la fecha de ingreso.';
+    }
     return errores;
   }
 
   // Comprobacion de formato de correo previa al envio: exige algo@algo.algo
-  // sin espacios. La validacion definitiva la hace la API con [EmailAddress]
-  // (6_contracts.md §8.7); esta solo evita el viaje innecesario al servidor.
+  // sin espacios. La validacion definitiva la hace la API con [EmailAddress];
+  // esta solo evita el viaje innecesario al servidor.
   private esCorreo(texto: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(texto);
   }

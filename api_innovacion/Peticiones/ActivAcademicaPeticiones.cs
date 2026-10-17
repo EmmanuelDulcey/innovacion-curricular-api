@@ -13,9 +13,7 @@ namespace ApiInnovacion.Peticiones;
 /// </summary>
 public class ActivAcademicaCrear
 {
-    [Required(ErrorMessage = "El campo id es obligatorio.")]
-    [Range(1, int.MaxValue, ErrorMessage = "El campo id debe ser un entero positivo.")]
-    public int? Id { get; set; }
+    // El id interno no se recibe: lo genera SQL Server (6_contracts.md §4).
 
     [Required(ErrorMessage = "El campo nombre es obligatorio.")]
     [StringLength(45, ErrorMessage = "El campo nombre no puede superar los 45 caracteres.")]

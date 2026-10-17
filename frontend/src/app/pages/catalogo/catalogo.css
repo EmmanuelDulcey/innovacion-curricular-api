@@ -1,3 +1,7 @@
+/* ========================================================================
+   QUÉ ES: presentación visual de la página genérica de catálogo.
+   PAPEL: mantiene legibles la tabla, los formularios y sus acciones.
+   ======================================================================== */
 .catalogo {
   padding: 1.25rem;
 }

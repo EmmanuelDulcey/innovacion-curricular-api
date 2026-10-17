@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ApiInnovacion.Peticiones;
 
 // Tres peticiones por tabla (3_plan.md, Seccion 4.2): una por verbo.
-//   CarInnovacionCrear      -> POST : todo obligatorio, incluida la llave primaria.
+//   CarInnovacionCrear      -> POST : datos requeridos; la base asigna el id.
 //   CarInnovacionReemplazo  -> PUT  : todo obligatorio, sin la llave (va en la URL).
 //   CarInnovacionActualizar -> PATCH: todo opcional.
 // Las anotaciones producen el 422 automatico antes de tocar SQL Server
@@ -12,9 +12,6 @@ namespace ApiInnovacion.Peticiones;
 /// <summary>Peticion del POST /api/car_innovacion (6_contracts.md, Seccion 4.6).</summary>
 public class CarInnovacionCrear
 {
-    [Required(ErrorMessage = "El campo id es obligatorio.")]
-    [Range(1, int.MaxValue, ErrorMessage = "El campo id debe ser un entero positivo.")]
-    public int? Id { get; set; }
 
     [Required(ErrorMessage = "El campo nombre es obligatorio.")]
     [StringLength(45, ErrorMessage = "El campo nombre no puede superar los 45 caracteres.")]
