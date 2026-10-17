@@ -5,7 +5,7 @@
 > que subir ni copiar y pegar nada).
 >
 > Rama: `rama-valentina-v2`
-
+ 
 ## 1. Lo que le toca
 
 - **Tablas:** `programa` (FK a `facultad`; maestro con pantalla maestro-detalle), `acreditacion`, `registro_calificado`, `activ_academica`, y las puentes `enfoque_rc` y `aa_rc`.

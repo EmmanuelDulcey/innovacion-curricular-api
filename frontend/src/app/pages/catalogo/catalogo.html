@@ -19,7 +19,9 @@
         />
       </label>
       @if (config()) {
-        <button class="btn-crear" (click)="abrirCrear()">+ Crear</button>
+        <button class="btn-crear" (click)="abrirCrear()">
+          {{ config()!.esPuente ? '+ Asignar' : '+ Crear' }}
+        </button>
       }
     </div>
   </header>
@@ -47,7 +49,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (fila of registrosFiltrados(); track fila[config()!.llave]) {
+          @for (fila of registrosFiltrados(); track claveDe(fila)) {
             <tr>
               @for (campo of config()!.campos; track campo.campo) {
                 <td>{{ valorVisible(fila, campo) }}</td>
@@ -58,8 +60,17 @@
                 </span>
               </td>
               <td class="acciones">
-                <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
-                <button class="btn-eliminar" (click)="eliminar(fila)">Eliminar</button>
+                @if (config()!.esPuente) {
+                  <!-- Las parejas solo se asignan y se retiran: sin Editar. -->
+                  <button class="btn-eliminar" (click)="eliminar(fila)">Retirar</button>
+                } @else {
+                  @if (config()!.nombre === 'programa') {
+                    <!-- Maestro-detalle: abre la pantalla del programa. -->
+                    <a class="btn-detalle" [routerLink]="['/programas', fila['id']]">Detalle</a>
+                  }
+                  <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
+                  <button class="btn-eliminar" (click)="eliminar(fila)">Eliminar</button>
+                }
               </td>
             </tr>
           }
@@ -70,56 +81,68 @@
 
   @if (mostrarFormulario() && config(); as cfg) {
     <div class="formulario">
-      <h2>{{ editando()!.esEdicion ? 'Editar' : 'Crear' }} registro</h2>
-      <p class="nota">
-        La llave (<code>{{ cfg.llave }}</code>) solo se asigna al crear; no se edita después.
-      </p>
+      <h2>
+        {{ editando()!.esEdicion ? 'Editar' : (cfg.esPuente ? 'Asignar pareja' : 'Crear registro') }}
+      </h2>
+      @if (!cfg.esPuente) {
+        <p class="nota">
+          La llave (<code>{{ cfg.llave }}</code>) solo se asigna al crear; no se edita después.
+        </p>
+      }
 
       <app-mensaje-error [error]="errorForm()" />
 
       <form (ngSubmit)="guardar()">
         @for (campo of cfg.campos; track campo.campo) {
-          <div class="campo">
-            <label>
-              {{ campo.etiqueta }}
-              @if (campo.requerido) {
-                <span class="req">*</span>
-              }
-            </label>
-            @if (campo.tipo === 'desplegable') {
-              <select [name]="campo.campo" [(ngModel)]="forma[campo.campo]">
-                <option [ngValue]="null">
-                  {{ campo.requerido ? 'Seleccione…' : '(ninguna)' }}
-                </option>
-                @for (opcion of opcionesDe(campo); track opcion.valor) {
-                  <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
+          @if (!campo.soloLectura) {
+            <div class="campo">
+              <label>
+                {{ campo.etiqueta }}
+                @if (campo.requerido) {
+                  <span class="req">*</span>
                 }
-              </select>
-            } @else if (campo.tipo === 'fecha') {
-              <input
-                type="date"
-                [name]="campo.campo"
-                [(ngModel)]="forma[campo.campo]"
-                [readonly]="esSoloLectura(campo)"
-              />
-            } @else {
-              <input
-                [type]="campo.tipo === 'entero' ? 'number' : 'text'"
-                [name]="campo.campo"
-                [(ngModel)]="forma[campo.campo]"
-                [readonly]="esSoloLectura(campo)"
-                step="1"
-              />
-            }
-            @if (erroresPorCampo()[campo.campo]) {
-              <span class="error-campo">{{ erroresPorCampo()[campo.campo] }}</span>
-            }
-          </div>
+              </label>
+              @if (campo.tipo === 'desplegable' || campo.tipo === 'booleano') {
+                <select [name]="campo.campo" [(ngModel)]="forma[campo.campo]">
+                  <option [ngValue]="null">
+                    {{ campo.requerido ? 'Seleccione…' : '(ninguna)' }}
+                  </option>
+                  @if (campo.tipo === 'booleano') {
+                    <!-- TINYINT 0/1: se envía el número, nunca texto. -->
+                    <option [ngValue]="1">Sí</option>
+                    <option [ngValue]="0">No</option>
+                  } @else {
+                    @for (opcion of opcionesDe(campo); track opcion.valor) {
+                      <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
+                    }
+                  }
+                </select>
+              } @else if (campo.tipo === 'fecha') {
+                <input
+                  type="date"
+                  [name]="campo.campo"
+                  [(ngModel)]="forma[campo.campo]"
+                  [readonly]="esSoloLectura(campo)"
+                />
+              } @else {
+                <input
+                  [type]="campo.tipo === 'entero' ? 'number' : 'text'"
+                  [name]="campo.campo"
+                  [(ngModel)]="forma[campo.campo]"
+                  [readonly]="esSoloLectura(campo)"
+                  step="1"
+                />
+              }
+              @if (erroresPorCampo()[campo.campo]) {
+                <span class="error-campo">{{ erroresPorCampo()[campo.campo] }}</span>
+              }
+            </div>
+          }
         }
 
         <div class="acciones-form">
           <button type="submit" class="btn-guardar">
-            {{ editando()!.esEdicion ? 'Guardar' : 'Crear' }}
+            {{ editando()!.esEdicion ? 'Guardar' : (cfg.esPuente ? 'Asignar' : 'Crear') }}
           </button>
           <button type="button" class="btn-cancelar" (click)="cerrarFormulario()">Cancelar</button>
         </div>

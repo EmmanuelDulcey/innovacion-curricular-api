@@ -1,5 +1,6 @@
 import { Component, computed, effect, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
@@ -20,7 +21,7 @@ import {
 // partir de CATALOGOS y usa api.service para los cinco verbos.
 @Component({
   selector: 'app-catalogo',
-  imports: [FormsModule, MensajeError],
+  imports: [FormsModule, MensajeError, RouterLink],
   templateUrl: './catalogo.html',
   styleUrl: './catalogo.css',
 })
@@ -132,7 +133,7 @@ export class Catalogo {
         const etiqueta = cfg.campos.find((campo) => campo.origen === origen)?.origenEtiqueta ?? 'nombre';
         mapa[origen] = (resultados[origen]?.datos ?? []).map((item) => ({
           valor: item[llave],
-          etiqueta: String(item[etiqueta] ?? item[llave]),
+          etiqueta: this.etiquetaDe(item, etiqueta, llave),
         }));
       }
       this.opciones.set(mapa);
@@ -145,9 +146,24 @@ export class Catalogo {
     return campo.origen ? this.opciones()[campo.origen] ?? [] : [];
   }
 
+  // Etiqueta visible de una opcion de desplegable. `etiqueta` puede nombrar
+  // varias columnas separadas con '+' (registro_calificado no tiene `nombre`:
+  // se muestra como "codigo - tipo_titulacion"); si no hay ningun valor, cae a
+  // la clave para que la opcion nunca quede en blanco.
+  private etiquetaDe(item: CualquierRegistro, etiqueta: string, llave: string): string {
+    const partes = etiqueta
+      .split('+')
+      .map((clave) => item[clave.trim()])
+      .filter((valor) => valor !== undefined && valor !== null && String(valor).trim() !== '');
+    if (partes.length === 0) return String(item[llave] ?? '');
+    return partes.map((valor) => String(valor)).join(' - ');
+  }
+
   // En el listado se muestra el nombre resuelto de la FK (<fk>_nombre) cuando el
-  // campo lo declara; si no, el valor crudo (9_frontend.md §4).
+  // campo lo declara; si no, el valor crudo (9_frontend.md §4). Los 0/1 de la
+  // base (espejo) se leen como Sí/No: la interfaz va sin jerga.
   valorVisible(fila: CualquierRegistro, campo: CampoConfig): unknown {
+    if (campo.tipo === 'booleano') return fila[campo.campo] === 1 ? 'Sí' : 'No';
     return campo.campoMostrar ? fila[campo.campoMostrar] : fila[campo.campo];
   }
 
@@ -162,10 +178,12 @@ export class Catalogo {
   abrirCrear() {
     const cfg = this.config()!;
     const fila: Record<string, any> = {};
-    // Un desplegable arranca en null (su opcion de relleno); el resto en cadena
-    // vacia. Asi el select no queda con un valor inexistente (9_frontend.md §8).
+    // Un desplegable (y un Sí/No) arranca en null, su opcion de relleno; el
+    // resto en cadena vacia. Asi el select no queda con un valor inexistente
+    // (9_frontend.md §8). Las columnas de solo lectura no entran al formulario.
     for (const campo of cfg.campos) {
-      fila[campo.campo] = campo.tipo === 'desplegable' ? null : '';
+      if (campo.soloLectura) continue;
+      fila[campo.campo] = campo.tipo === 'desplegable' || campo.tipo === 'booleano' ? null : '';
     }
     this.formaSeleccionada(fila, false);
   }
@@ -198,16 +216,37 @@ export class Catalogo {
 
   async eliminar(fila: CualquierRegistro) {
     const cfg = this.config()!;
-    const id = fila[cfg.llave];
-    if (!window.confirm('¿Eliminar este registro?')) return;
+    const pregunta = cfg.esPuente ? '¿Retirar esta pareja?' : '¿Eliminar este registro?';
+    if (!window.confirm(pregunta)) return;
 
     try {
-      await lastValueFrom(this.api.eliminar(cfg.nombre, id));
+      if (cfg.esPuente) {
+        // Retirar una pareja lleva las DOS claves de la PK, en su orden (§8.2).
+        const llaves = this.llavesDe(cfg);
+        await lastValueFrom(this.api.retirar(cfg.nombre, fila[llaves[0]], fila[llaves[1]]));
+      } else {
+        await lastValueFrom(this.api.eliminar(cfg.nombre, fila[cfg.llave]));
+      }
       this.error.set(null);
       await this.cargar();
     } catch (error) {
       this.error.set(error as ApiError);
     }
+  }
+
+  // Campos que forman la PK, en el orden de la tabla: las tablas normales
+  // tienen una llave; las puentes, dos (una pareja). `llave` sigue existiendo
+  // para el resto de la pagina, que solo necesita la primera.
+  private llavesDe(cfg: TablaConfig): string[] {
+    return cfg.campos.filter((campo) => campo.esLlave).map((campo) => campo.campo);
+  }
+
+  // Clave de una fila para el @for y para el detalle: en las puentes es la
+  // pareja completa, porque una sola columna no identifica la fila.
+  claveDe(fila: CualquierRegistro): string {
+    const llaves = this.llavesDe(this.config()!);
+    if (llaves.length > 1) return llaves.map((campo) => fila[campo]).join('/');
+    return String(fila[this.config()!.llave]);
   }
 
   async guardar() {
@@ -224,11 +263,16 @@ export class Catalogo {
     const id = this.forma[cfg.llave];
     const body: Record<string, any> = {};
     for (const campo of cfg.campos) {
+      // Las columnas de solo lectura (num_acreditaciones) nunca viajan en el body.
+      if (campo.soloLectura) continue;
       if (!esEdicion || campo.editable) body[campo.campo] = this.forma[campo.campo];
     }
 
     try {
-      if (esEdicion) {
+      if (cfg.esPuente) {
+        // Una puente solo se asigna: la pareja existe o no existe (sin PUT).
+        await lastValueFrom(this.api.asignar(cfg.nombre, body));
+      } else if (esEdicion) {
         await lastValueFrom(this.api.reemplazar(cfg.nombre, id, body));
       } else {
         await lastValueFrom(this.api.crear(cfg.nombre, body));
@@ -255,7 +299,7 @@ export class Catalogo {
   private validarFormulario(cfg: TablaConfig): Record<string, string> {
     const errores: Record<string, string> = {};
     for (const campo of cfg.campos) {
-      if (this.esSoloLectura(campo)) continue;
+      if (campo.soloLectura || this.esSoloLectura(campo)) continue;
 
       const valor = this.forma[campo.campo];
       const vacio = valor === undefined || valor === null || String(valor).trim() === '';

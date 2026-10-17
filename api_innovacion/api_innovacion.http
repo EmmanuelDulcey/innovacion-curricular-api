@@ -267,3 +267,607 @@ Content-Type: application/json
   "pais": "Colombia",
   "programa": 99999
 }
+
+
+# =============================================================================
+# Issue #2 (Valentina): programa, acreditacion, registro_calificado,
+# activ_academica y las puentes enfoque_rc y aa_rc.
+#
+# Si partes de una base recién creada, ejecuta PRIMERO los puntos 5.1 y 5.2 de
+# esta sección (crean la facultad 110 y el programa 10): las secciones 3 y 4 de
+# arriba asumen ese programa. Al final del bloque de acreditación se demuestra
+# el disparador (el contador del programa cambia solo al asignar y retirar).
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# 5. programa (maestro central)
+# -----------------------------------------------------------------------------
+
+### Listar programas
+GET {{host}}/api/programa?limite=100
+Accept: application/json
+
+### Obtener programa 10
+GET {{host}}/api/programa/10
+Accept: application/json
+
+### 5.1 Crear facultad 110 (la facultad 100 quedó retirada en la sección 2) — 200
+POST {{host}}/api/facultad
+Content-Type: application/json
+
+{
+  "id": 110,
+  "nombre": "Facultad de Ingeniería",
+  "tipo": "Pública",
+  "fecha_fun": "1960-03-15",
+  "universidad": 1
+}
+
+### 5.2 Crear programa 10 — 200 (devuelve la fila; num_acreditaciones arranca en 0)
+POST {{host}}/api/programa
+Content-Type: application/json
+
+{
+  "id": 10,
+  "nombre": "Ingeniería de Sistemas",
+  "tipo": "Profesional",
+  "nivel": "Pregrado",
+  "fecha_creacion": "2001-02-01",
+  "fecha_cierre": null,
+  "numero_cohortes": "24",
+  "cant_graduados": "320",
+  "fecha_actualizacion": "2025-01-15",
+  "ciudad": "Medellín",
+  "facultad": 110
+}
+
+### Reemplazar (PUT) programa 10 — 200
+PUT {{host}}/api/programa/10
+Content-Type: application/json
+
+{
+  "nombre": "Ingeniería de Sistemas",
+  "tipo": "Profesional",
+  "nivel": "Pregrado",
+  "fecha_creacion": "2001-02-01",
+  "fecha_cierre": "2030-12-31",
+  "numero_cohortes": "26",
+  "cant_graduados": "330",
+  "fecha_actualizacion": "2025-06-30",
+  "ciudad": "Medellín",
+  "facultad": 110
+}
+
+### Actualizar parcial (PATCH) programa 10 — 200
+PATCH {{host}}/api/programa/10
+Content-Type: application/json
+
+{
+  "ciudad": "Bogotá"
+}
+
+### FALLA: FK inexistente (facultad 99999) — 409
+POST {{host}}/api/programa
+Content-Type: application/json
+
+{
+  "id": 11,
+  "nombre": "Programa X",
+  "tipo": "Profesional",
+  "nivel": "Pregrado",
+  "fecha_creacion": "2010-01-01",
+  "numero_cohortes": "10",
+  "cant_graduados": "50",
+  "fecha_actualizacion": "2025-01-01",
+  "ciudad": "Medellín",
+  "facultad": 99999
+}
+
+### FALLA: body inválido (nombre vacío) — 422
+POST {{host}}/api/programa
+Content-Type: application/json
+
+{
+  "id": 12,
+  "nombre": "",
+  "tipo": "Profesional",
+  "nivel": "Pregrado",
+  "fecha_creacion": "2010-01-01",
+  "numero_cohortes": "10",
+  "cant_graduados": "50",
+  "fecha_actualizacion": "2025-01-01",
+  "ciudad": "Medellín",
+  "facultad": 110
+}
+
+### FALLA: PATCH sin campos — 400
+PATCH {{host}}/api/programa/10
+Content-Type: application/json
+
+{}
+
+### FALLA: recurso inexistente — 404
+GET {{host}}/api/programa/999999
+Accept: application/json
+
+
+# -----------------------------------------------------------------------------
+# 6. acreditacion (detalle de programa; aquí se demuestra el DISPARADOR)
+# -----------------------------------------------------------------------------
+
+### Listar acreditaciones
+GET {{host}}/api/acreditacion?limite=100
+Accept: application/json
+
+### Crear acreditación 400 — 200 (devuelve la fila)
+POST {{host}}/api/acreditacion
+Content-Type: application/json
+
+{
+  "resolucion": 400,
+  "tipo": "Nacional",
+  "calificacion": "Alta calidad",
+  "fecha_inicio": "2020-01-01",
+  "fecha_fin": "2024-01-01",
+  "programa": 10
+}
+
+### Disparador 1/2: el contador del programa 10 debe subir SOLO (num_acreditaciones = 1)
+GET {{host}}/api/programa/10
+Accept: application/json
+
+### Obtener acreditación 400
+GET {{host}}/api/acreditacion/400
+Accept: application/json
+
+### Reemplazar (PUT) acreditación 400 — 200
+PUT {{host}}/api/acreditacion/400
+Content-Type: application/json
+
+{
+  "tipo": "Internacional",
+  "calificacion": "Excelente",
+  "fecha_inicio": "2021-01-01",
+  "fecha_fin": "2025-01-01",
+  "programa": 10
+}
+
+### Actualizar parcial (PATCH) acreditación 400 — 200
+PATCH {{host}}/api/acreditacion/400
+Content-Type: application/json
+
+{
+  "calificacion": "Superior"
+}
+
+### FALLA: PK duplicada (repetir el POST de la 400) — 409
+POST {{host}}/api/acreditacion
+Content-Type: application/json
+
+{
+  "resolucion": 400,
+  "tipo": "Nacional",
+  "calificacion": "Alta calidad",
+  "fecha_inicio": "2020-01-01",
+  "fecha_fin": "2024-01-01",
+  "programa": 10
+}
+
+### FALLA: FK inexistente (programa 99999) — 409
+POST {{host}}/api/acreditacion
+Content-Type: application/json
+
+{
+  "resolucion": 401,
+  "tipo": "Nacional",
+  "calificacion": "Alta calidad",
+  "fecha_inicio": "2020-01-01",
+  "fecha_fin": "2024-01-01",
+  "programa": 99999
+}
+
+### FALLA: body inválido (fecha_fin vacía) — 422
+POST {{host}}/api/acreditacion
+Content-Type: application/json
+
+{
+  "resolucion": 402,
+  "tipo": "Nacional",
+  "calificacion": "Alta calidad",
+  "fecha_inicio": "2020-01-01",
+  "fecha_fin": "",
+  "programa": 10
+}
+
+### FALLA: retirar el programa 10 con la acreditación 400 activa — 409
+DELETE {{host}}/api/programa/10
+
+### Eliminar (DELETE) acreditación 400 — 200
+DELETE {{host}}/api/acreditacion/400
+
+### Disparador 2/2: el contador del programa 10 debe bajar SOLO (num_acreditaciones = 0)
+# Esta es la prueba del tropiezo 6: retirar es un UPDATE y el disparador lo escucha.
+GET {{host}}/api/programa/10
+Accept: application/json
+
+### FALLA: segundo DELETE de la acreditación 400 — 404
+DELETE {{host}}/api/acreditacion/400
+
+
+# -----------------------------------------------------------------------------
+# 7. registro_calificado (PK codigo; fechas DATE; padre de enfoque_rc y aa_rc)
+# -----------------------------------------------------------------------------
+
+### Listar registros calificados
+GET {{host}}/api/registro_calificado?limite=100
+Accept: application/json
+
+### Crear registro calificado 500 — 200 (queda activo: lo usan las puentes)
+POST {{host}}/api/registro_calificado
+Content-Type: application/json
+
+{
+  "codigo": 500,
+  "cant_creditos": "160",
+  "hora_acom": "20",
+  "hora_ind": "30",
+  "metodologia": "Presencial",
+  "fecha_inicio": "2020-01-15",
+  "fecha_fin": "2024-01-15",
+  "duracion_anios": "4",
+  "duracion_semestres": "8",
+  "tipo_titulacion": "Profesional",
+  "programa": 10
+}
+
+### Obtener registro calificado 500
+GET {{host}}/api/registro_calificado/500
+Accept: application/json
+
+### Reemplazar (PUT) registro calificado 500 — 200
+PUT {{host}}/api/registro_calificado/500
+Content-Type: application/json
+
+{
+  "cant_creditos": "170",
+  "hora_acom": "22",
+  "hora_ind": "28",
+  "metodologia": "Híbrida",
+  "fecha_inicio": "2021-01-15",
+  "fecha_fin": "2025-01-15",
+  "duracion_anios": "4",
+  "duracion_semestres": "8",
+  "tipo_titulacion": "Profesional",
+  "programa": 10
+}
+
+### Actualizar parcial (PATCH) registro calificado 500 — 200
+PATCH {{host}}/api/registro_calificado/500
+Content-Type: application/json
+
+{
+  "duracion_anios": "5"
+}
+
+### Crear registro calificado 501 (para el ciclo de borrado) — 200
+POST {{host}}/api/registro_calificado
+Content-Type: application/json
+
+{
+  "codigo": 501,
+  "cant_creditos": "120",
+  "hora_acom": "15",
+  "hora_ind": "25",
+  "metodologia": "Virtual",
+  "fecha_inicio": "2022-01-15",
+  "fecha_fin": "2026-01-15",
+  "duracion_anios": "4",
+  "duracion_semestres": "8",
+  "tipo_titulacion": "Tecnólogo",
+  "programa": 10
+}
+
+### Eliminar (DELETE) registro calificado 501 — 200
+DELETE {{host}}/api/registro_calificado/501
+
+### FALLA: segundo DELETE del registro 501 — 404
+DELETE {{host}}/api/registro_calificado/501
+
+### FALLA: FK inexistente (programa 99999) — 409
+POST {{host}}/api/registro_calificado
+Content-Type: application/json
+
+{
+  "codigo": 502,
+  "cant_creditos": "120",
+  "hora_acom": "15",
+  "hora_ind": "25",
+  "metodologia": "Virtual",
+  "fecha_inicio": "2022-01-15",
+  "fecha_fin": "2026-01-15",
+  "duracion_anios": "4",
+  "duracion_semestres": "8",
+  "tipo_titulacion": "Tecnólogo",
+  "programa": 99999
+}
+
+### FALLA: body inválido (codigo no positivo) — 422
+POST {{host}}/api/registro_calificado
+Content-Type: application/json
+
+{
+  "codigo": 0,
+  "cant_creditos": "120",
+  "hora_acom": "15",
+  "hora_ind": "25",
+  "metodologia": "Virtual",
+  "fecha_inicio": "2022-01-15",
+  "fecha_fin": "2026-01-15",
+  "duracion_anios": "4",
+  "duracion_semestres": "8",
+  "tipo_titulacion": "Tecnólogo",
+  "programa": 10
+}
+
+
+# -----------------------------------------------------------------------------
+# 8. activ_academica (la única FK OPCIONAL: disenio -> «(ninguna)» = null)
+# -----------------------------------------------------------------------------
+
+### Listar actividades académicas
+GET {{host}}/api/activ_academica?limite=100
+Accept: application/json
+
+### Crear actividad académica 600 con disenio null (opcional) — 200
+POST {{host}}/api/activ_academica
+Content-Type: application/json
+
+{
+  "id": 600,
+  "nombre": "Cátedra de innovación",
+  "num_creditos": 3,
+  "tipo": "Curso",
+  "area_formacion": "Sociohumanística",
+  "h_acom": 4,
+  "h_indep": 5,
+  "idioma": "Español",
+  "espejo": 0,
+  "entidad_espejo": "N/A",
+  "pais_espejo": "N/A",
+  "disenio": null
+}
+
+### Obtener actividad académica 600
+GET {{host}}/api/activ_academica/600
+Accept: application/json
+
+### Reemplazar (PUT) actividad 600 con disenio 10 — 200
+PUT {{host}}/api/activ_academica/600
+Content-Type: application/json
+
+{
+  "nombre": "Cátedra de innovación abierta",
+  "num_creditos": 3,
+  "tipo": "Curso",
+  "area_formacion": "Sociohumanística",
+  "h_acom": 4,
+  "h_indep": 6,
+  "idioma": "Español",
+  "espejo": 1,
+  "entidad_espejo": "Universidad de Antioquia",
+  "pais_espejo": "Colombia",
+  "disenio": 10
+}
+
+### Actualizar parcial (PATCH) actividad 600 — 200
+PATCH {{host}}/api/activ_academica/600
+Content-Type: application/json
+
+{
+  "h_acom": 5
+}
+
+### Crear actividad académica 601 (para el ciclo de borrado) — 200
+POST {{host}}/api/activ_academica
+Content-Type: application/json
+
+{
+  "id": 601,
+  "nombre": "Electiva de emprendimiento",
+  "num_creditos": 2,
+  "tipo": "Electiva",
+  "area_formacion": "Disciplinar",
+  "h_acom": 2,
+  "h_indep": 2,
+  "idioma": "Español",
+  "espejo": 0,
+  "entidad_espejo": "N/A",
+  "pais_espejo": "N/A",
+  "disenio": null
+}
+
+### Eliminar (DELETE) actividad 601 — 200
+DELETE {{host}}/api/activ_academica/601
+
+### FALLA: segundo DELETE de la actividad 601 — 404
+DELETE {{host}}/api/activ_academica/601
+
+### FALLA: FK opcional inexistente (disenio 99999) — 409
+POST {{host}}/api/activ_academica
+Content-Type: application/json
+
+{
+  "id": 602,
+  "nombre": "Actividad X",
+  "num_creditos": 2,
+  "tipo": "Curso",
+  "area_formacion": "Disciplinar",
+  "h_acom": 2,
+  "h_indep": 2,
+  "idioma": "Español",
+  "espejo": 0,
+  "entidad_espejo": "N/A",
+  "pais_espejo": "N/A",
+  "disenio": 99999
+}
+
+### FALLA: body inválido (espejo fuera de 0/1) — 422
+POST {{host}}/api/activ_academica
+Content-Type: application/json
+
+{
+  "id": 603,
+  "nombre": "Actividad X",
+  "num_creditos": 2,
+  "tipo": "Curso",
+  "area_formacion": "Disciplinar",
+  "h_acom": 2,
+  "h_indep": 2,
+  "idioma": "Español",
+  "espejo": 7,
+  "entidad_espejo": "N/A",
+  "pais_espejo": "N/A",
+  "disenio": null
+}
+
+
+# -----------------------------------------------------------------------------
+# 9. enfoque_rc (puente: asignar y retirar; SIN PUT ni PATCH)
+# -----------------------------------------------------------------------------
+
+### Crear un enfoque 900 (tabla de la v1) para la pareja — 200
+POST {{host}}/api/enfoque
+Content-Type: application/json
+
+{
+  "id": 900,
+  "nombre": "Enfoque de prueba",
+  "descripcion": "Para la puente enfoque_rc"
+}
+
+### Listar enfoques del registro
+GET {{host}}/api/enfoque_rc?limite=100
+Accept: application/json
+
+### Asignar la pareja (900, 500) — 200 (devuelve la pareja con los nombres)
+POST {{host}}/api/enfoque_rc
+Content-Type: application/json
+
+{
+  "enfoque": 900,
+  "registro_calificado": 500
+}
+
+### Obtener la pareja (900, 500)
+GET {{host}}/api/enfoque_rc/900/500
+Accept: application/json
+
+### FALLA: pareja repetida — 409
+POST {{host}}/api/enfoque_rc
+Content-Type: application/json
+
+{
+  "enfoque": 900,
+  "registro_calificado": 500
+}
+
+### FALLA: enfoque inexistente — 409
+POST {{host}}/api/enfoque_rc
+Content-Type: application/json
+
+{
+  "enfoque": 99999,
+  "registro_calificado": 500
+}
+
+### FALLA: registro calificado inexistente — 409
+POST {{host}}/api/enfoque_rc
+Content-Type: application/json
+
+{
+  "enfoque": 900,
+  "registro_calificado": 99999
+}
+
+### FALLA: body inválido (falta registro_calificado) — 422
+POST {{host}}/api/enfoque_rc
+Content-Type: application/json
+
+{
+  "enfoque": 900
+}
+
+### FALLA: retirar el registro calificado 500 con la pareja activa — 409
+DELETE {{host}}/api/registro_calificado/500
+
+### Retirar la pareja (900, 500) — 200
+DELETE {{host}}/api/enfoque_rc/900/500
+
+### FALLA: retirar la pareja otra vez — 404
+DELETE {{host}}/api/enfoque_rc/900/500
+
+
+# -----------------------------------------------------------------------------
+# 10. aa_rc (puente con atributos: componente y semestre)
+# -----------------------------------------------------------------------------
+
+### Listar actividades del registro
+GET {{host}}/api/aa_rc?limite=100
+Accept: application/json
+
+### Asignar la pareja (600, 500) con componente y semestre — 200
+POST {{host}}/api/aa_rc
+Content-Type: application/json
+
+{
+  "activ_academicas_idcurso": 600,
+  "registro_calificado_codigo": 500,
+  "componente": "Investigación",
+  "semestre": "2025-1"
+}
+
+### Obtener la pareja (600, 500)
+GET {{host}}/api/aa_rc/600/500
+Accept: application/json
+
+### FALLA: pareja repetida — 409
+POST {{host}}/api/aa_rc
+Content-Type: application/json
+
+{
+  "activ_academicas_idcurso": 600,
+  "registro_calificado_codigo": 500,
+  "componente": "Investigación",
+  "semestre": "2025-1"
+}
+
+### FALLA: actividad académica inexistente — 409
+POST {{host}}/api/aa_rc
+Content-Type: application/json
+
+{
+  "activ_academicas_idcurso": 99999,
+  "registro_calificado_codigo": 500,
+  "componente": "Investigación",
+  "semestre": "2025-1"
+}
+
+### FALLA: body inválido (falta componente) — 422
+POST {{host}}/api/aa_rc
+Content-Type: application/json
+
+{
+  "activ_academicas_idcurso": 600,
+  "registro_calificado_codigo": 500,
+  "semestre": "2025-1"
+}
+
+### FALLA: retirar la actividad académica 600 con la pareja activa — 409
+DELETE {{host}}/api/activ_academica/600
+
+### Retirar la pareja (600, 500) — 200
+DELETE {{host}}/api/aa_rc/600/500
+
+### FALLA: retirar la pareja otra vez — 404
+DELETE {{host}}/api/aa_rc/600/500
