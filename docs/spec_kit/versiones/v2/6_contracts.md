@@ -19,11 +19,12 @@ facultad            programa            acreditacion       registro_calificado
 activ_academica     pasantia            premio             docente_departamento
 alianza             programa_ac         programa_pe        programa_ci
 an_programa         enfoque_rc          aa_rc
+docente (catálogo auxiliar local)
 ```
 
 ### 0.2 Rutas
 
-**PK simple** (`facultad`, `programa`, `activ_academica`, `pasantia`, `premio`):
+**PK simple** (`docente`, `facultad`, `programa`, `activ_academica`, `pasantia`, `premio`):
 
 ```text
 /api/{tabla}
@@ -38,8 +39,10 @@ an_programa         enfoque_rc          aa_rc
 /api/registro_calificado/{codigo}
 ```
 
-**PK compuesta** (puentes, `docente_departamento`, `alianza`) — las dos claves en
-la ruta, **en el orden de la PK**:
+**PK compuesta** — las dos claves van en la ruta, **en el orden de la PK**.
+En `docente_departamento` y `alianza` las claves identifican de forma fija la
+relación mientras PUT/PATCH cambian únicamente sus atributos; las cuatro
+puentes puras de Felipe sólo tienen asignar y retirar:
 
 ```text
 /api/programa_ac/{programa}/{area_conocimiento}
@@ -179,6 +182,12 @@ GET /api/premio
 GET /api/programa_ac
 ```
 
+Mientras se integra el CRUD de `programa` de su módulo responsable, los
+formularios de las relaciones de Felipe consultan
+`GET /api/opciones/programa?limite=N`: devuelve solo `{id, nombre}` de programas
+activos con el mismo sobre de lectura (`tabla: "programa"`) o 204 si no hay.
+Esta ruta de apoyo no reemplaza `GET /api/programa` ni permite modificarlo.
+
 ### Query string
 
 ```text
@@ -285,8 +294,7 @@ GET /api/programa_ac/10/3
 
 # 4. `POST /api/{tabla}` — Crear registro
 
-La PK la asigna el cliente (sin `IDENTITY`). `activo` no se envía: se crea en
-`1`. **La respuesta incluye la fila guardada** (lo exige el **tropiezo 8**).
+SQL Server genera el ID interno automáticamente. El cliente no lo incluye en el POST. `activo` no se envía: se crea en `1`. **La respuesta incluye la fila guardada con el ID asignado** (lo exige el **tropiezo 8**).
 
 ### 4.1 `POST /api/facultad`
 
@@ -297,7 +305,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 3,
   "nombre": "Facultad de Ciencias",
   "tipo": "Pública",
   "fecha_fun": "1975-08-01",
@@ -327,7 +334,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 5,
   "nombre": "Pasantía internacional",
   "pais": "Chile",
   "empresa": "ACME S.A.",
@@ -340,7 +346,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 4,
   "nombre": "",
   "tipo": "Pública",
   "fecha_fun": "1975-08-01",
@@ -358,10 +363,12 @@ Content-Type: application/json
 }
 ```
 
-### 4.4 Clave primaria duplicada → 409 *(cambió respecto de la v1)*
+### 4.4 Clave de negocio duplicada → 409
 
-En la v1 una PK duplicada era **500** (regla 16). En la v2 es **409** — es un
-conflicto con el **estado** de la base, no un error inesperado.
+Los IDs internos se generan en SQL Server y no se envían en el POST. Las claves
+de negocio que siguen siendo PK (por ejemplo, el NIT de `aliado` o una
+resolución) y el documento único del catálogo docente sí pueden repetirse; son
+conflictos con el estado de la base, no errores inesperados.
 
 ```json
 {
@@ -387,8 +394,10 @@ conflicto con el **estado** de la base, no un error inesperado.
 
 # 5. `PUT /api/{tabla}/{pk}` — Reemplazo completo
 
-Todos los campos modificables son obligatorios. La PK va en la URL (en las
-puentes, **no aplica**: no hay `PUT`).
+Todos los campos modificables son obligatorios. La PK va en la URL. En
+`docente_departamento` y `alianza`, se incluyen las dos claves; el body contiene
+solo atributos editables. En las cuatro puentes puras, **no aplica**: no hay
+`PUT`.
 
 ```http
 PUT /api/facultad/3
@@ -422,6 +431,8 @@ Content-Type: application/json
 
 Sólo se modifican los campos enviados. El **servicio** lee el registro actual, lo
 combina con el body y llama al procedimiento de actualización (parámetros fijos).
+Para `docente_departamento` y `alianza`, la ruta lleva su pareja compuesta y el
+body nunca cambia las claves. Las puentes puras no tienen `PATCH`.
 
 ```http
 PATCH /api/facultad/3
@@ -477,7 +488,7 @@ DELETE /api/programa/10
 
 ---
 
-# 8. Tablas puente — asignar y retirar por pareja
+# 8. Tablas puente puras — asignar y retirar por pareja
 
 Las puentes **no tienen `PUT`** (no se editan). Tienen **asignar** (`POST`) y
 **retirar** (`DELETE`).
@@ -507,7 +518,7 @@ Content-Type: application/json
 }
 ```
 
-**Pareja repetida → 409** (una pareja existe o no existe):
+**Pareja repetida → 409** (también si fue retirada antes: el borrado lógico conserva la PK y la v2 no define reactivación):
 
 ```json
 {
@@ -543,11 +554,31 @@ DELETE /api/programa_ac/10/3
 
 Pareja inexistente (o ya retirada) → **404**.
 
-> **Puentes con atributos.** En `aa_rc` el `POST` exige además `componente` y
-> `semestre`; en `alianza`, `fecha_inicio` (obligatoria), `fecha_fin` y `docente`
-> (opcionales); en `docente_departamento`, `dedicacion`, `modalidad`,
-> `fecha_ingreso` (obligatorias) y `fecha_salida` (opcional). El resto del
-> contrato es idéntico.
+> `aa_rc` pertenece al issue de Valentina; este bloque describe las cuatro
+> puentes puras de Felipe. Las relaciones con atributos de Felipe se describen
+> a continuación.
+
+## 8.3 Relaciones con atributos propios — Issue 3 de Felipe
+
+`docente_departamento` y `alianza` tienen PK compuesta y además datos propios.
+Se crean por `POST`; se consultan por pareja; se reemplazan por `PUT`; se
+actualizan parcialmente por `PATCH`; y se retiran por `DELETE`. En las rutas se
+usan las claves en este orden:
+
+```text
+PUT/PATCH/DELETE /api/docente_departamento/{docente}/{departamento}
+PUT/PATCH/DELETE /api/alianza/{aliado}/{departamento}
+```
+
+El `PUT` de `docente_departamento` requiere `dedicacion`, `modalidad` y
+`fecha_ingreso`, con `fecha_salida` opcional. El `PUT` de `alianza` requiere
+`fecha_inicio`, con `fecha_fin` y `docente` opcionales. Ningún body de edición
+acepta una clave distinta para mover la relación.
+
+El `PATCH` conserva los campos ausentes; un campo opcional enviado como `null`
+se limpia. Enviar `{}` → **400**. Una pareja inexistente o retirada → **404**.
+Si `fecha_salida < fecha_ingreso` o `fecha_fin < fecha_inicio` → **400**.
+Un cuerpo mal formado o un campo requerido ausente en PUT → **422**.
 
 ---
 
@@ -560,7 +591,7 @@ tareas por tabla (obligatoriedad, largos, formatos) se resumen así:
 
 | Campo | Crear | PUT | PATCH | Regla |
 |---|---|---|---|---|
-| `id` | ✓ | URL | URL | Entero positivo |
+| `id` | — (lo genera SQL Server) | URL | URL | Entero positivo |
 | `nombre` | ✓ | ✓ | Opcional | Obligatorio, máx. 60 |
 | `tipo` | ✓ | ✓ | Opcional | Obligatorio, máx. 45 |
 | `fecha_fun` | ✓ | ✓ | Opcional | Obligatorio, tipo fecha |
@@ -570,7 +601,7 @@ tareas por tabla (obligatoriedad, largos, formatos) se resumen así:
 
 | Campo | Crear | PUT | PATCH | Regla |
 |---|---|---|---|---|
-| `id` | ✓ | URL | URL | Entero positivo |
+| `id` | — (lo genera SQL Server) | URL | URL | Entero positivo |
 | `nombre` | ✓ | ✓ | Opcional | Obligatorio, máx. 60 |
 | `tipo` | ✓ | ✓ | Opcional | Obligatorio, máx. 45 |
 | `nivel` | ✓ | ✓ | Opcional | Obligatorio, máx. 45 |
@@ -587,8 +618,8 @@ tareas por tabla (obligatoriedad, largos, formatos) se resumen así:
 
 | Tabla | Campos obligatorios |
 |---|---|
-| `pasantia` | `id`, `nombre`(45), `pais`(45), `empresa`(45), `descripcion`(45), `programa`(FK) |
-| `premio` | `id`, `nombre`(45), `descripcion`(45), `fecha`(DATE), `entidad_otorgante`(45), `pais`(45), `programa`(FK) |
+| `pasantia` | `nombre`(45), `pais`(45), `empresa`(45), `descripcion`(45), `programa`(FK); `id` automático |
+| `premio` | `nombre`(45), `descripcion`(45), `fecha`(DATE), `entidad_otorgante`(45), `pais`(45), `programa`(FK); `id` automático |
 
 ## 9.4 `activ_academica` — única FK opcional
 
@@ -596,12 +627,21 @@ tareas por tabla (obligatoriedad, largos, formatos) se resumen así:
 Frontend envía **`null`**, nunca `""`. Si llega `null`, la API lo guarda como
 `NULL` (sin intentar convertir la cadena vacía).
 
+## 9.4 DOCENTE — catálogo auxiliar de Felipe
+
+- GET /api/docente: lista fichas activas con {tabla, limite, total, datos}.
+- POST /api/docente: recibe documento y nombre; SQL asigna id y la respuesta
+  incluye la ficha creada.
+- PUT/PATCH/DELETE siguen el CRUD del catálogo. Documento duplicado responde
+  409; un docente con relaciones activas no se puede desactivar.
+- Documento es único, admite hasta 20 caracteres y no es la llave primaria.
+
 ## 9.5 `alianza` y `docente_departamento` — validación de fechas (Issue 3)
 
 | Tabla | Regla |
 |---|---|
 | `alianza` | Obligatorios: `aliado`(FK), `departamento`(FK), `fecha_inicio`. Opcionales: `fecha_fin`, `docente`. **`fecha_fin ≥ fecha_inicio`** si viene. |
-| `docente_departamento` | Obligatorios: `docente`(int externo), `departamento`(FK), `dedicacion`, `modalidad`, `fecha_ingreso`. Opcional: `fecha_salida`. **`fecha_salida ≥ fecha_ingreso`** si viene. |
+| `docente_departamento` | Obligatorios: `docente`(FK a docente local), `departamento`(FK), `dedicacion`, `modalidad`, `fecha_ingreso`. Opcional: `fecha_salida`. **`fecha_salida ≥ fecha_ingreso`** si viene. |
 
 Una fecha incoherente → **400** (regla de negocio, `ArgumentException`).
 
@@ -657,7 +697,7 @@ Para **PK simple** (`facultad`, `programa`, `activ_academica`, `pasantia`,
 Para **PK con nombre** (`acreditacion`, `registro_calificado`): igual, con
 `{resolucion}` / `{codigo}`.
 
-Para **tablas puente** (y `docente_departamento`, `alianza`):
+Para **relaciones con PK compuesta**:
 
 | Verbo | Ruta | Operación | Éxito |
 |---|---|---|---|
@@ -666,7 +706,11 @@ Para **tablas puente** (y `docente_departamento`, `alianza`):
 | POST | `/api/{puente}` | **Asignar** | 200 |
 | DELETE | `/api/{puente}/{pk1}/{pk2}` | **Retirar** | 200 |
 
-> Las puentes **no** tienen `PUT` ni `PATCH` ni botón de editar.
+Las cuatro puentes puras de Felipe (`programa_ac`, `programa_pe`,
+`programa_ci`, `an_programa`) **no** tienen `PUT`, `PATCH` ni botón de editar.
+`docente_departamento` y `alianza` también tienen GET/POST/DELETE, y además
+`PUT /api/{tabla}/{pk1}/{pk2}` y `PATCH /api/{tabla}/{pk1}/{pk2}` para sus
+atributos, sin cambiar las claves.
 
 Además: `GET /` (diagnóstico) y `GET /swagger`.
 
@@ -682,8 +726,10 @@ Además: `GET /` (diagnóstico) y `GET /swagger`.
 | PUT | ✓ | | | ✓ | ✓ | ✓ | ✓ |
 | PATCH | ✓ | | ✓ | ✓ | ✓ | ✓ | ✓ |
 | DELETE | ✓ | | | ✓ | ✓ | | ✓ |
-| POST puente (asignar) | ✓ | | | | ✓ | ✓ | ✓ |
-| DELETE puente (retirar) | ✓ | | | ✓ | | | ✓ |
+| POST relación compuesta (asignar) | ✓ | | | | ✓ | ✓ | ✓ |
+| PUT relación con atributos (por pareja) | ✓ | | | ✓ | ✓ | ✓ | ✓ |
+| PATCH relación con atributos (por pareja) | ✓ | | ✓ | ✓ | ✓ | ✓ | ✓ |
+| DELETE relación compuesta (retirar) | ✓ | | | ✓ | | | ✓ |
 
 ---
 
@@ -698,7 +744,9 @@ Además: `GET /` (diagnóstico) y `GET /swagger`.
    hijos.
 7. Un **disparador** mantiene `programa.num_acreditaciones`; la API no lo
    escribe.
-8. Las puentes se manejan **por pareja**: asignar y retirar; **sin editar**.
+8. Las claves de una relación compuesta son inmutables. `docente_departamento`
+   y `alianza` permiten editar sus atributos por pareja; las cuatro puentes
+   puras de Felipe sólo se asignan y retiran.
 9. La envoltura y los mensajes van en **castellano** (decisión de la versión;
    ver §0.3).
 10. La versión de estos contratos corresponde exclusivamente a la **v2**.

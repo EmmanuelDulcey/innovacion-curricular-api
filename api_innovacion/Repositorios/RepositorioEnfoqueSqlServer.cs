@@ -42,17 +42,17 @@ public class RepositorioEnfoqueSqlServer : IRepositorioEnfoque
         return await conexion.QuerySingleOrDefaultAsync<Enfoque>(sql, new { id });
     }
 
-    public async Task CrearAsync(Enfoque entidad)
+    public async Task<int> CrearAsync(Enfoque entidad)
     {
         const string sql = """
-            INSERT INTO enfoque (id, nombre, descripcion, activo)
-            VALUES (@id, @nombre, @descripcion, 1);
+            INSERT INTO enfoque (nombre, descripcion, activo)
+            OUTPUT INSERTED.id
+            VALUES (@nombre, @descripcion, 1);
             """;
 
         await using var conexion = new SqlConnection(_cadenaConexion);
-        await conexion.ExecuteAsync(sql, new
+        return await conexion.QuerySingleAsync<int>(sql, new
         {
-            entidad.Id,
             entidad.Nombre,
             entidad.Descripcion
         });

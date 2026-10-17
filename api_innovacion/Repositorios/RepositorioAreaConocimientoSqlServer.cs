@@ -45,17 +45,17 @@ public class RepositorioAreaConocimientoSqlServer : IRepositorioAreaConocimiento
         return await conexion.QuerySingleOrDefaultAsync<AreaConocimiento>(sql, new { id });
     }
 
-    public async Task CrearAsync(AreaConocimiento entidad)
+    public async Task<int> CrearAsync(AreaConocimiento entidad)
     {
         const string sql = """
-            INSERT INTO area_conocimiento (id, gran_area, area, disciplina, activo)
-            VALUES (@id, @gran_area, @area, @disciplina, 1);
+            INSERT INTO area_conocimiento (gran_area, area, disciplina, activo)
+            OUTPUT INSERTED.id
+            VALUES (@gran_area, @area, @disciplina, 1);
             """;
 
         await using var conexion = new SqlConnection(_cadenaConexion);
-        await conexion.ExecuteAsync(sql, new
+        return await conexion.QuerySingleAsync<int>(sql, new
         {
-            entidad.Id,
             gran_area = entidad.GranArea,
             entidad.Area,
             entidad.Disciplina

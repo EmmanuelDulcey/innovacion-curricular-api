@@ -62,7 +62,6 @@ END
 GO
 
 CREATE OR ALTER PROCEDURE sp_crear_facultad
-    @id          INT,
     @nombre      VARCHAR(60),
     @tipo        VARCHAR(45),
     @fecha_fun   DATE,
@@ -70,10 +69,14 @@ CREATE OR ALTER PROCEDURE sp_crear_facultad
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO facultad (id, nombre, tipo, fecha_fun, universidad, activo)
-    VALUES (@id, @nombre, @tipo, @fecha_fun, @universidad, 1);
+    DECLARE @id_generado INT;
+    DECLARE @insertado TABLE (id INT NOT NULL);
 
-    -- Tropiezo 8: se devuelve la fila recién guardada (misma forma que consultar).
+    INSERT INTO facultad (nombre, tipo, fecha_fun, universidad, activo)
+    OUTPUT INSERTED.id INTO @insertado (id)
+    VALUES (@nombre, @tipo, @fecha_fun, @universidad, 1);
+
+    SELECT @id_generado = id FROM @insertado;
     SELECT f.id,
            f.nombre,
            f.tipo,
@@ -83,7 +86,7 @@ BEGIN
            f.activo
       FROM facultad f
       LEFT JOIN universidad u ON u.id = f.universidad
-     WHERE f.id = @id;
+     WHERE f.id = @id_generado;
 END
 GO
 
@@ -174,7 +177,6 @@ END
 GO
 
 CREATE OR ALTER PROCEDURE sp_crear_pasantia
-    @id          INT,
     @nombre      VARCHAR(45),
     @pais        VARCHAR(45),
     @empresa     VARCHAR(45),
@@ -183,9 +185,14 @@ CREATE OR ALTER PROCEDURE sp_crear_pasantia
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO pasantia (id, nombre, pais, empresa, descripcion, programa, activo)
-    VALUES (@id, @nombre, @pais, @empresa, @descripcion, @programa, 1);
+    DECLARE @id_generado INT;
+    DECLARE @insertado TABLE (id INT NOT NULL);
 
+    INSERT INTO pasantia (nombre, pais, empresa, descripcion, programa, activo)
+    OUTPUT INSERTED.id INTO @insertado (id)
+    VALUES (@nombre, @pais, @empresa, @descripcion, @programa, 1);
+
+    SELECT @id_generado = id FROM @insertado;
     SELECT p.id,
            p.nombre,
            p.pais,
@@ -196,7 +203,7 @@ BEGIN
            p.activo
       FROM pasantia p
       LEFT JOIN programa pr ON pr.id = p.programa
-     WHERE p.id = @id;
+     WHERE p.id = @id_generado;
 END
 GO
 
@@ -282,7 +289,6 @@ END
 GO
 
 CREATE OR ALTER PROCEDURE sp_crear_premio
-    @id                INT,
     @nombre            VARCHAR(45),
     @descripcion       VARCHAR(45),
     @fecha             DATE,
@@ -292,9 +298,14 @@ CREATE OR ALTER PROCEDURE sp_crear_premio
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO premio (id, nombre, descripcion, fecha, entidad_otorgante, pais, programa, activo)
-    VALUES (@id, @nombre, @descripcion, @fecha, @entidad_otorgante, @pais, @programa, 1);
+    DECLARE @id_generado INT;
+    DECLARE @insertado TABLE (id INT NOT NULL);
 
+    INSERT INTO premio (nombre, descripcion, fecha, entidad_otorgante, pais, programa, activo)
+    OUTPUT INSERTED.id INTO @insertado (id)
+    VALUES (@nombre, @descripcion, @fecha, @entidad_otorgante, @pais, @programa, 1);
+
+    SELECT @id_generado = id FROM @insertado;
     SELECT p.id,
            p.nombre,
            p.descripcion,
@@ -306,7 +317,7 @@ BEGIN
            p.activo
       FROM premio p
       LEFT JOIN programa pr ON pr.id = p.programa
-     WHERE p.id = @id;
+     WHERE p.id = @id_generado;
 END
 GO
 

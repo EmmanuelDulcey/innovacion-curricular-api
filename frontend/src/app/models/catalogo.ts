@@ -1,12 +1,9 @@
 // =============================================================================
-// catalogo.ts
-// Modelos del Frontend de la v1. La API responde en snake_case (6_contracts.md);
-// aqui se definen las interfaces en camelCase (9_frontend.md §4) y la
-// configuracion generica que usa la pagina /tablas/:tabla para armar columnas
-// y formularios con las reglas de 6_contracts.md §8.
-// Issue 1 (Emmanuel): area_conocimiento y universidad.
-// Issue 2 (Felipe): aspecto_normativo, practica_estrategia y enfoque.
-// Issue 3 (Valentina): car_innovacion y aliado.
+// QUÉ ES: contratos TypeScript y metadatos de los catálogos de la aplicación.
+// PAPEL: permite que una sola página genere tablas y formularios configurables,
+//       mientras mantiene tipadas las respuestas y opciones de las claves.
+// La API responde con sus nombres de contrato; las interfaces de dominio usan
+// camelCase y la configuración conserva el nombre de cada columna SQL.
 // =============================================================================
 
 // --- Contratos auxiliares (9_frontend.md §4) -------------------------------
@@ -130,10 +127,66 @@ export interface Premio {
   activo: boolean;
 }
 
+// Relaciones de Felipe (v2): la API usa snake_case; estas interfaces son el
+// contrato tipado que consumen otros componentes Angular.
+export interface DocenteDepartamento {
+  docente: number;
+  departamento: number;
+  departamentoNombre?: string;
+  dedicacion: string;
+  modalidad: string;
+  fechaIngreso: string;
+  fechaSalida: string | null;
+  activo: boolean;
+}
+
+export interface Alianza {
+  aliado: number;
+  aliadoNombre?: string;
+  departamento: number;
+  departamentoNombre?: string;
+  fechaInicio: string;
+  fechaFin: string | null;
+  docente: number | null;
+  activo: boolean;
+}
+
+export interface ProgramaAc {
+  programa: number;
+  programaNombre?: string;
+  areaConocimiento: number;
+  areaConocimientoNombre?: string;
+  activo: boolean;
+}
+
+export interface ProgramaPe {
+  programa: number;
+  programaNombre?: string;
+  practicaEstrategia: number;
+  practicaEstrategiaNombre?: string;
+  activo: boolean;
+}
+
+export interface ProgramaCi {
+  programa: number;
+  programaNombre?: string;
+  carInnovacion: number;
+  carInnovacionNombre?: string;
+  activo: boolean;
+}
+
+export interface AnPrograma {
+  aspectoNormativo: number;
+  aspectoNormativoNombre?: string;
+  programa: number;
+  programaNombre?: string;
+  activo: boolean;
+}
+
 // Opcion de un desplegable de clave foranea (9_frontend.md §8): se muestra la
 // etiqueta de la maestra y se envia su clave.
 export interface OpcionFk {
-  valor: number;
+  valor: number | string;
   etiqueta: string;
 }
 
@@ -146,19 +199,25 @@ export interface CampoConfig {
   // 'desplegable' es una clave foranea (select); 'fecha' es un DATE (input date).
   tipo: 'texto' | 'entero' | 'correo' | 'desplegable' | 'fecha';
   requerido: boolean;
-  editable: boolean;    // false para la llave: obligatoria al crear, solo lectura al editar
+  editable: boolean;    // indica si el campo puede modificarse al editar un registro
   maximo: number | null;
   esLlave?: boolean;
+  generado?: boolean;          // la base genera la clave; nunca se captura en formularios
+  opcionesFijas?: string[];     // valores permitidos por el formulario, sin consultar otro catálogo
   // Metadatos de las claves foraneas (solo 'desplegable', 9_frontend.md §8):
   origen?: string;              // tabla maestra de la que salen las opciones
   origenEtiqueta?: string;      // columna a mostrar (por defecto 'nombre')
+  origenSubEtiqueta?: string;   // segundo dato de contexto para evitar opciones ambiguas
   campoMostrar?: string;        // columna con el nombre resuelto (<fk>_nombre) para el listado
 }
 
 export interface TablaConfig {
   nombre: string;
   nombreLegible: string;
-  llave: string;                 // 'id' (cualquiera de las dos tablas del issue 1)
+  llave: string;                 // llave simple de las tablas de v1
+  llaves?: [string, string];     // PK compuesta: ruta en el orden del script
+  esRelacion?: boolean;          // la identidad se forma con dos claves compuestas
+  permiteEdicion?: boolean;      // relaciones con atributos propios: PUT/PATCH conservan las claves
   campos: CampoConfig[];
 }
 
@@ -176,18 +235,35 @@ export const TABLAS: string[] = [
   'facultad',
   'pasantia',
   'premio',
+  'docente',
+  'docente_departamento',
+  'alianza',
+  'programa_ac',
+  'programa_pe',
+  'programa_ci',
+  'an_programa',
 ];
 
 // Configuracion por tabla. Los catalogos de Felipe siguen el mismo formulario
 // generico y los contratos de 6_contracts.md §8.3–8.5. Los de Valentina
 // (car_innovacion y aliado) usan el mismo formulario con los contratos §8.6–8.7.
 export const CATALOGOS: Record<string, TablaConfig> = {
+  docente: {
+    nombre: 'docente',
+    nombreLegible: 'Docentes',
+    llave: 'id',
+    campos: [
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
+      { campo: 'documento', etiqueta: 'Documento de identidad', tipo: 'texto', requerido: true, editable: true, maximo: 20 },
+      { campo: 'nombre', etiqueta: 'Nombre completo', tipo: 'texto', requerido: true, editable: true, maximo: 120 },
+    ],
+  },
   area_conocimiento: {
     nombre: 'area_conocimiento',
     nombreLegible: 'Área de conocimiento',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'gran_area', etiqueta: 'Gran área', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
       { campo: 'area', etiqueta: 'Área', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
       { campo: 'disciplina', etiqueta: 'Disciplina', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
@@ -198,7 +274,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Universidad',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
       { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'ciudad', etiqueta: 'Ciudad', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
@@ -209,7 +285,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Aspecto normativo',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'fuente', etiqueta: 'Fuente', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
@@ -220,7 +296,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Práctica o estrategia',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
@@ -231,7 +307,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Enfoque',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
     ],
@@ -241,7 +317,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Característica de innovación',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       // En la base es VARCHAR(MAX): obligatoria pero sin máximo por la API
       // (6_contracts.md §8.6), por eso maximo va en null.
@@ -269,7 +345,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Facultad',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
       { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'fecha_fun', etiqueta: 'Fecha de fundación', tipo: 'fecha', requerido: true, editable: true, maximo: null },
@@ -291,7 +367,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Pasantía',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'pais', etiqueta: 'País', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'empresa', etiqueta: 'Empresa', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
@@ -314,7 +390,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Premio',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'fecha', etiqueta: 'Fecha', tipo: 'fecha', requerido: true, editable: true, maximo: null },
@@ -331,6 +407,90 @@ export const CATALOGOS: Record<string, TablaConfig> = {
         origenEtiqueta: 'nombre',
         campoMostrar: 'programa_nombre',
       },
+    ],
+  },
+  // --- v2, issue de Felipe: relaciones con atributos y tablas puente puras --
+  docente_departamento: {
+    nombre: 'docente_departamento',
+    nombreLegible: 'Docentes por programa',
+    llave: 'docente',
+    llaves: ['docente', 'departamento'],
+    esRelacion: true,
+    permiteEdicion: true,
+    campos: [
+      { campo: 'docente', etiqueta: 'Docente', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'docente', origenEtiqueta: 'nombre', campoMostrar: 'docente_nombre' },
+      { campo: 'departamento', etiqueta: 'Programa', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'programa', origenEtiqueta: 'nombre', campoMostrar: 'departamento_nombre' },
+      { campo: 'dedicacion', etiqueta: 'Dedicación', tipo: 'texto', requerido: true, editable: true, maximo: 15 },
+      {
+        campo: 'modalidad',
+        etiqueta: 'Modalidad',
+        tipo: 'desplegable',
+        requerido: true,
+        editable: true,
+        maximo: 45,
+        opcionesFijas: ['Presencial', 'Virtual-Remoto', 'Hibrido'],
+      },
+      { campo: 'fecha_ingreso', etiqueta: 'Fecha de ingreso', tipo: 'fecha', requerido: true, editable: true, maximo: null },
+      { campo: 'fecha_salida', etiqueta: 'Fecha de salida', tipo: 'fecha', requerido: false, editable: true, maximo: null },
+    ],
+  },
+  alianza: {
+    nombre: 'alianza',
+    nombreLegible: 'Alianzas',
+    llave: 'aliado',
+    llaves: ['aliado', 'departamento'],
+    esRelacion: true,
+    permiteEdicion: true,
+    campos: [
+      { campo: 'aliado', etiqueta: 'Aliado', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'aliado', origenEtiqueta: 'razon_social', campoMostrar: 'aliado_nombre' },
+      { campo: 'departamento', etiqueta: 'Programa', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'programa', origenEtiqueta: 'nombre', campoMostrar: 'departamento_nombre' },
+      { campo: 'fecha_inicio', etiqueta: 'Fecha de inicio', tipo: 'fecha', requerido: true, editable: true, maximo: null },
+      { campo: 'fecha_fin', etiqueta: 'Fecha de fin', tipo: 'fecha', requerido: false, editable: true, maximo: null },
+      { campo: 'docente', etiqueta: 'Docente responsable', tipo: 'desplegable', requerido: false, editable: true, maximo: null, origen: 'docente', origenEtiqueta: 'nombre', campoMostrar: 'docente_nombre' },
+    ],
+  },
+  programa_ac: {
+    nombre: 'programa_ac',
+    nombreLegible: 'Áreas del programa',
+    llave: 'programa',
+    llaves: ['programa', 'area_conocimiento'],
+    esRelacion: true,
+    campos: [
+      { campo: 'programa', etiqueta: 'Programa', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'programa', origenEtiqueta: 'nombre', campoMostrar: 'programa_nombre' },
+      { campo: 'area_conocimiento', etiqueta: 'Área de conocimiento', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'area_conocimiento', origenEtiqueta: 'area', origenSubEtiqueta: 'disciplina', campoMostrar: 'area_conocimiento_nombre' },
+    ],
+  },
+  programa_pe: {
+    nombre: 'programa_pe',
+    nombreLegible: 'Prácticas del programa',
+    llave: 'programa',
+    llaves: ['programa', 'practica_estrategia'],
+    esRelacion: true,
+    campos: [
+      { campo: 'programa', etiqueta: 'Programa', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'programa', origenEtiqueta: 'nombre', campoMostrar: 'programa_nombre' },
+      { campo: 'practica_estrategia', etiqueta: 'Práctica o estrategia', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'practica_estrategia', origenEtiqueta: 'nombre', campoMostrar: 'practica_estrategia_nombre' },
+    ],
+  },
+  programa_ci: {
+    nombre: 'programa_ci',
+    nombreLegible: 'Innovación del programa',
+    llave: 'programa',
+    llaves: ['programa', 'car_innovacion'],
+    esRelacion: true,
+    campos: [
+      { campo: 'programa', etiqueta: 'Programa', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'programa', origenEtiqueta: 'nombre', campoMostrar: 'programa_nombre' },
+      { campo: 'car_innovacion', etiqueta: 'Característica de innovación', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'car_innovacion', origenEtiqueta: 'nombre', campoMostrar: 'car_innovacion_nombre' },
+    ],
+  },
+  an_programa: {
+    nombre: 'an_programa',
+    nombreLegible: 'Normativa del programa',
+    llave: 'aspecto_normativo',
+    llaves: ['aspecto_normativo', 'programa'],
+    esRelacion: true,
+    campos: [
+      { campo: 'aspecto_normativo', etiqueta: 'Aspecto normativo', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'aspecto_normativo', origenEtiqueta: 'descripcion', campoMostrar: 'aspecto_normativo_nombre' },
+      { campo: 'programa', etiqueta: 'Programa', tipo: 'desplegable', requerido: true, editable: false, maximo: null, esLlave: true, origen: 'programa', origenEtiqueta: 'nombre', campoMostrar: 'programa_nombre' },
     ],
   },
 };

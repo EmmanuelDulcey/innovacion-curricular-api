@@ -1,20 +1,20 @@
 # Modelo de datos — Versión 2: las 15 tablas con clave foránea
 
-> **Versión 2** · La base sigue **dada** ([4_research.md](4_research.md), D5):
-> viene completa desde la v1. Lo único que la v2 agrega es la columna `activo`
-> a las 15 tablas, la columna del disparador y los procedimientos; el script
-> provisto (`db/innovacion_curricular.ss.sql`) **no se modifica**.
+> **Versión 2** · La base parte del esquema de la v1 y suma los cambios aprobados
+> en [4_research.md](4_research.md), D6 y D15: `activo` en las 15 tablas con FK,
+> columna del disparador, IDs internos automáticos y catálogo local de docentes.
 
 ---
 
 ## 1. Dónde encaja la v2 en la base completa
 
-`innovacion_curricular` tiene **25 tablas** en dos módulos. La v1 tomó las **7
-sin FK**; la v2 toma las **15 con FK** del módulo de Innovación Curricular. Las
-**3 de usuarios** (`usuario`, `rol`, `rol_usuario`) son de la v3.
+`innovacion_curricular` tiene **26 tablas** en dos módulos. La v1 opera las **7
+sin FK**; la v2 opera las **15 con FK** y el catálogo auxiliar `docente` del
+módulo de Innovación Curricular. Las **3 de usuarios** (`usuario`, `rol`,
+`rol_usuario`) son de la v3.
 
 ```
-INNOVACIÓN CURRICULAR (22)                          USUARIOS (3, v3)
+INNOVACIÓN CURRICULAR (23)                          USUARIOS (3, v3)
 ──────────────────────────                          ────────────────
 Sin FK (7, v1):                                     usuario · rol · rol_usuario
   area_conocimiento · universidad
@@ -39,11 +39,14 @@ Con FK (15, esta versión):
 
 ## 2. Convenciones comunes
 
-- Todas las PK son **enteras y sin `IDENTITY`**: el valor lo asigna quien hace
-  el `POST` (como en la v1).
+- Las PK internas `id` las genera SQL Server de forma incremental (secuencia
+  por defecto para las tablas heredadas y `IDENTITY` para `docente`). El documento
+  de una persona y las claves naturales no se sustituyen por IDs internos.
 - Tablas con **PK simple**: ruta `/api/{tabla}/{id}`.
-- Tablas con **PK compuesta** (puentes y `docente_departamento`, `alianza`):
-  ruta con **las dos claves** y operación **asignar/retirar** por pareja.
+- Tablas con **PK compuesta**: la ruta lleva las dos claves. Las relaciones con
+  atributos `docente_departamento` y `alianza` permiten CRUD de esos atributos
+  sin alterar la pareja; las cuatro puentes puras de Felipe sólo se asignan y
+  retiran.
 - **Todas** las columnas de texto son `NOT NULL` en el script, salvo las
   marcadas **opcional** abajo.
 - La v2 agrega **`activo BIT NOT NULL DEFAULT 1`** a las 15 tablas (§3).
@@ -58,7 +61,7 @@ Con FK (15, esta versión):
 
 | Columna | Tipo | Regla | Notas |
 |---|---|---|---|
-| `id` | `INT` | **PK**, positiva | La asigna el cliente |
+| `id` | `INT` | **PK**, positiva | Generada automáticamente por la secuencia de SQL Server |
 | `nombre` | `VARCHAR(60)` | Obligatorio, máx. 60 | |
 | `tipo` | `VARCHAR(45)` | Obligatorio, máx. 45 | Texto libre |
 | `fecha_fun` | `DATE` | Obligatorio | **`DateTime`** en C# |
@@ -69,7 +72,7 @@ Con FK (15, esta versión):
 
 | Columna | Tipo | Regla | Notas |
 |---|---|---|---|
-| `id` | `INT` | **PK**, positiva | |
+| `id` | `INT` | **PK**, positiva | Generada automáticamente por la secuencia de SQL Server |
 | `nombre` | `VARCHAR(60)` | Obligatorio, máx. 60 | |
 | `tipo` | `VARCHAR(45)` | Obligatorio | |
 | `nivel` | `VARCHAR(45)` | Obligatorio | |
@@ -118,7 +121,7 @@ Con FK (15, esta versión):
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK** |
+| `id` | `INT` | **PK** | Generada automáticamente por la secuencia de SQL Server |
 | `nombre` | `VARCHAR(45)` | Obligatorio |
 | `num_creditos` | `INT` | Obligatorio |
 | `tipo` | `VARCHAR(20)` | Obligatorio |
@@ -139,7 +142,7 @@ Con FK (15, esta versión):
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK** |
+| `id` | `INT` | **PK** | Generada automáticamente por la secuencia de SQL Server |
 | `nombre` | `VARCHAR(45)` | Obligatorio |
 | `pais` | `VARCHAR(45)` | Obligatorio |
 | `empresa` | `VARCHAR(45)` | Obligatorio |
@@ -151,7 +154,7 @@ Con FK (15, esta versión):
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK** |
+| `id` | `INT` | **PK** | Generada automáticamente por la secuencia de SQL Server |
 | `nombre` | `VARCHAR(45)` | Obligatorio |
 | `descripcion` | `VARCHAR(45)` | Obligatorio |
 | `fecha` | `DATE` | Obligatorio (**`DateTime`**) |
@@ -219,11 +222,24 @@ Con FK (15, esta versión):
 > ni `registro_calificado`). Los parámetros del procedimiento y los alias del
 > `SELECT` deben usar **esos** nombres.
 
-### 3.14 `docente_departamento` — Felipe · vinculación (docente externo ↔ `programa`)
+### 3.13a DOCENTE — catálogo local de personas de Gestión Profesoral
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `docente` | `INT` | **PK compuesta**; **sin FK** — ver [4_research.md](4_research.md) D6 |
+| id | INT IDENTITY | PK interna autogenerada e incremental |
+| documento | VARCHAR(20) | Obligatorio, único; identifica a la persona pero no es PK |
+| nombre | VARCHAR(120) | Obligatorio |
+| activo | BIT | Borrado lógico; sólo activos aparecen en los desplegables |
+
+> Este catálogo local se incorpora por decisión explícita del propietario del
+> proyecto para evitar códigos de docente digitados a mano. No reemplaza el
+> número de documento ni expone información de otra base de datos.
+
+### 3.14 `docente_departamento` — Felipe · vinculación (docente local ↔ `programa`)
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `docente` | `INT` | **PK compuesta**, FK → `docente(id)` (desplegable) |
 | `departamento` | `INT` | **PK compuesta**, FK → `programa(id)` (desplegable) |
 | `dedicacion` | `VARCHAR(15)` | Obligatorio |
 | `modalidad` | `VARCHAR(45)` | Obligatorio |
@@ -231,9 +247,10 @@ Con FK (15, esta versión):
 | `fecha_salida` | `DATE` | **Opcional** (`NULL`) |
 | `activo` | `BIT` | Agregada por la v2 |
 
-> El nombre `departamento` **apunta a `programa`** (así lo declara el script). El
-> campo `docente` se digita como **identificador entero** (su catálogo vive en
-> otro módulo/BD).
+> El nombre `departamento` **apunta a `programa`** (así lo declara el script).
+> `docente` referencia el catálogo local: su ID es interno e incremental, y el
+> número de documento se guarda en una columna distinta. Dedicación, modalidad
+> y fechas son atributos editables; la pareja docente-programa es inmutable.
 
 ### 3.15 `alianza` — Felipe · `aliado` ↔ `programa`
 
@@ -243,12 +260,14 @@ Con FK (15, esta versión):
 | `departamento` | `INT` | **PK compuesta**, FK → `programa(id)` (desplegable) |
 | `fecha_inicio` | `DATE` | Obligatorio (**`DateTime`**) |
 | `fecha_fin` | `DATE` | **Opcional** (`NULL`) |
-| `docente` | `INT` | **Opcional** (`NULL`), sin FK (identificador externo) |
+| `docente` | `INT` | **Opcional** (`NULL`), FK → `docente(id)` (selección de responsable) |
 | `activo` | `BIT` | Agregada por la v2 |
 
 > Validación de negocio de Felipe (Issue 3): **`fecha_fin ≥ fecha_inicio`** (y en
-> `docente_departamento`, `fecha_salida ≥ fecha_ingreso`) → si no, **400/422**
+> `docente_departamento`, `fecha_salida ≥ fecha_ingreso`) → si no, **400** por regla de negocio; campos ausentes o tipos inválidos son **422**
 > según la constitución. Ver [6_contracts.md](6_contracts.md) §8.
+> Las fechas y el docente responsable se pueden reemplazar o actualizar por
+> separado; `aliado` y `departamento` siguen siendo la identidad fija de la fila.
 
 ---
 

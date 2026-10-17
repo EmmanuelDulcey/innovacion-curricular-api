@@ -13,9 +13,9 @@ GO
 -- =============================================================================
 -- Base de datos: innovacion_curricular
 -- Módulo: Innovación Curricular
--- Tablas del módulo: 22
+-- Tablas del módulo: 23 (incluye el catálogo local docente de la v2)
 -- Tablas de gestión de usuarios: 3
--- Total de tablas: 25
+-- Total de tablas: 26
 -- =============================================================================
 
 
@@ -23,9 +23,25 @@ GO
 -- TABLAS DEL MÓDULO: INNOVACIÓN CURRICULAR
 -- =============================================
 
+-- Los identificadores internos se generan con secuencias. Se usan secuencias
+-- en vez de IDENTITY para poder instalar la misma regla en bases ya creadas
+-- sin reconstruir tablas ni romper sus claves foráneas.
+CREATE SEQUENCE dbo.seq_area_conocimiento_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_universidad_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_aspecto_normativo_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_practica_estrategia_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_enfoque_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_car_innovacion_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_facultad_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_programa_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_activ_academica_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_pasantia_id AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.seq_premio_id AS INT START WITH 1 INCREMENT BY 1;
+GO
+
 -- Tabla: area_conocimiento
 CREATE TABLE area_conocimiento (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_area_conocimiento_id DEFAULT (NEXT VALUE FOR dbo.seq_area_conocimiento_id),
     gran_area VARCHAR(60) NOT NULL,
     area VARCHAR(60) NOT NULL,
     disciplina VARCHAR(60) NOT NULL,
@@ -34,7 +50,7 @@ CREATE TABLE area_conocimiento (
 
 -- Tabla: universidad
 CREATE TABLE universidad (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_universidad_id DEFAULT (NEXT VALUE FOR dbo.seq_universidad_id),
     nombre VARCHAR(60) NOT NULL,
     tipo VARCHAR(45) NOT NULL,
     ciudad VARCHAR(45) NOT NULL,
@@ -43,7 +59,7 @@ CREATE TABLE universidad (
 
 -- Tabla: aspecto_normativo
 CREATE TABLE aspecto_normativo (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_aspecto_normativo_id DEFAULT (NEXT VALUE FOR dbo.seq_aspecto_normativo_id),
     tipo VARCHAR(45) NOT NULL,
     descripcion VARCHAR(45) NOT NULL,
     fuente VARCHAR(45) NOT NULL,
@@ -52,7 +68,7 @@ CREATE TABLE aspecto_normativo (
 
 -- Tabla: practica_estrategia
 CREATE TABLE practica_estrategia (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_practica_estrategia_id DEFAULT (NEXT VALUE FOR dbo.seq_practica_estrategia_id),
     tipo VARCHAR(45) NOT NULL,
     nombre VARCHAR(45) NOT NULL,
     descripcion VARCHAR(45) NOT NULL,
@@ -61,7 +77,7 @@ CREATE TABLE practica_estrategia (
 
 -- Tabla: enfoque
 CREATE TABLE enfoque (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_enfoque_id DEFAULT (NEXT VALUE FOR dbo.seq_enfoque_id),
     nombre VARCHAR(45) NOT NULL,
     descripcion VARCHAR(45) NOT NULL,
     PRIMARY KEY (id)
@@ -69,7 +85,7 @@ CREATE TABLE enfoque (
 
 -- Tabla: car_innovacion
 CREATE TABLE car_innovacion (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_car_innovacion_id DEFAULT (NEXT VALUE FOR dbo.seq_car_innovacion_id),
     nombre VARCHAR(45) NOT NULL,
     descripcion VARCHAR(MAX) NOT NULL,
     tipo VARCHAR(45) NOT NULL,
@@ -89,7 +105,7 @@ CREATE TABLE aliado (
 
 -- Tabla: facultad
 CREATE TABLE facultad (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_facultad_id DEFAULT (NEXT VALUE FOR dbo.seq_facultad_id),
     nombre VARCHAR(60) NOT NULL,
     tipo VARCHAR(45) NOT NULL,
     fecha_fun DATE NOT NULL,
@@ -100,7 +116,7 @@ CREATE TABLE facultad (
 
 -- Tabla: programa
 CREATE TABLE programa (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_programa_id DEFAULT (NEXT VALUE FOR dbo.seq_programa_id),
     nombre VARCHAR(60) NOT NULL,
     tipo VARCHAR(45) NOT NULL,
     nivel VARCHAR(45) NOT NULL,
@@ -146,7 +162,7 @@ CREATE TABLE registro_calificado (
 
 -- Tabla: activ_academica
 CREATE TABLE activ_academica (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_activ_academica_id DEFAULT (NEXT VALUE FOR dbo.seq_activ_academica_id),
     nombre VARCHAR(45) NOT NULL,
     num_creditos INT NOT NULL,
     tipo VARCHAR(20) NOT NULL,
@@ -164,7 +180,7 @@ CREATE TABLE activ_academica (
 
 -- Tabla: pasantia
 CREATE TABLE pasantia (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_pasantia_id DEFAULT (NEXT VALUE FOR dbo.seq_pasantia_id),
     nombre VARCHAR(45) NOT NULL,
     pais VARCHAR(45) NOT NULL,
     empresa VARCHAR(45) NOT NULL,
@@ -176,7 +192,7 @@ CREATE TABLE pasantia (
 
 -- Tabla: premio
 CREATE TABLE premio (
-    id INT NOT NULL,
+    id INT NOT NULL CONSTRAINT DF_premio_id DEFAULT (NEXT VALUE FOR dbo.seq_premio_id),
     nombre VARCHAR(45) NOT NULL,
     descripcion VARCHAR(45) NOT NULL,
     fecha DATE NOT NULL,
@@ -244,6 +260,15 @@ CREATE TABLE aa_rc (
 );
 
 -- Tabla: docente_departamento
+CREATE TABLE docente (
+    id INT IDENTITY(1,1) NOT NULL,
+    documento VARCHAR(20) NOT NULL,
+    nombre VARCHAR(120) NOT NULL,
+    activo BIT NOT NULL CONSTRAINT DF_docente_activo DEFAULT 1,
+    PRIMARY KEY (id),
+    CONSTRAINT UQ_docente_documento UNIQUE (documento)
+);
+
 CREATE TABLE docente_departamento (
     docente INT NOT NULL,
     departamento INT NOT NULL,
@@ -252,7 +277,8 @@ CREATE TABLE docente_departamento (
     fecha_ingreso DATE NOT NULL,
     fecha_salida DATE,
     PRIMARY KEY (docente, departamento),
-    FOREIGN KEY (departamento) REFERENCES programa(id)
+    FOREIGN KEY (departamento) REFERENCES programa(id),
+    CONSTRAINT FK_docente_departamento_docente FOREIGN KEY (docente) REFERENCES docente(id)
 );
 
 -- Tabla: alianza
@@ -264,7 +290,8 @@ CREATE TABLE alianza (
     docente INT,
     PRIMARY KEY (aliado, departamento),
     FOREIGN KEY (aliado) REFERENCES aliado(nit),
-    FOREIGN KEY (departamento) REFERENCES programa(id)
+    FOREIGN KEY (departamento) REFERENCES programa(id),
+    CONSTRAINT FK_alianza_docente FOREIGN KEY (docente) REFERENCES docente(id)
 );
 
 

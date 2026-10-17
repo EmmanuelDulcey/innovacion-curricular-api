@@ -1,12 +1,17 @@
+<!-- =======================================================================
+     QUÉ ES: plantilla reutilizable de listas, filtros y formularios.
+     PAPEL: muestra relaciones por nombre; permite editar atributos cuando la
+            relación los tiene y deja las tablas puente puras en asignar/retirar.
+     ======================================================================= -->
 <section class="catalogo">
   <header class="cabecera">
     <h1>{{ config()?.nombreLegible ?? tabla() }}</h1>
     <div class="fila-acciones">
       <input
         type="search"
-        placeholder="Filtrar por texto..."
-        [ngModel]="filtro()"
-        (ngModelChange)="filtro.set($event)"
+        placeholder="Escribe para filtrar..."
+        [value]="filtro()"
+        (input)="actualizarFiltro($event)"
         class="filtro"
       />
       <label class="limite">
@@ -19,7 +24,7 @@
         />
       </label>
       @if (config()) {
-        <button class="btn-crear" (click)="abrirCrear()">+ Crear</button>
+        <button class="btn-crear" (click)="abrirCrear()">{{ esPuentePuro() ? '+ Asignar' : '+ Crear' }}</button>
       }
     </div>
   </header>
@@ -34,6 +39,8 @@
     <p class="vacio">Cargando registros...</p>
   } @else if (registros().length === 0) {
     <p class="vacio">No hay registros.</p>
+  } @else if (registrosFiltrados().length === 0) {
+    <p class="vacio">No hay registros que coincidan con «{{ filtro().trim() }}».</p>
   } @else {
     <div class="tabla-contenedor">
       <table>
@@ -47,7 +54,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (fila of registrosFiltrados(); track fila[config()!.llave]) {
+          @for (fila of registrosFiltrados(); track claveFila(fila)) {
             <tr>
               @for (campo of config()!.campos; track campo.campo) {
                 <td>{{ valorVisible(fila, campo) }}</td>
@@ -58,8 +65,12 @@
                 </span>
               </td>
               <td class="acciones">
-                <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
-                <button class="btn-eliminar" (click)="eliminar(fila)">Eliminar</button>
+                @if (puedeEditar()) {
+                  <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
+                }
+                <button class="btn-eliminar" (click)="eliminar(fila)">
+                  {{ config()!.esRelacion ? 'Retirar' : 'Eliminar' }}
+                </button>
               </td>
             </tr>
           }
@@ -70,15 +81,22 @@
 
   @if (mostrarFormulario() && config(); as cfg) {
     <div class="formulario">
-      <h2>{{ editando()!.esEdicion ? 'Editar' : 'Crear' }} registro</h2>
+      <h2>{{ esPuentePuro() ? 'Asignar relación' : (editando()!.esEdicion ? 'Editar registro' : 'Crear registro') }}</h2>
       <p class="nota">
-        La llave (<code>{{ cfg.llave }}</code>) solo se asigna al crear; no se edita después.
+        @if (editando()!.esEdicion && cfg.permiteEdicion) {
+          Puedes cambiar los datos de la relación; sus registros vinculados permanecen iguales.
+        } @else if (cfg.esRelacion) {
+          Selecciona los registros que deseas vincular.
+        } @else {
+          El identificador se asigna automáticamente y aparece en el listado al guardar.
+        }
       </p>
 
       <app-mensaje-error [error]="errorForm()" />
 
       <form (ngSubmit)="guardar()">
         @for (campo of cfg.campos; track campo.campo) {
+          @if (!campo.generado) {
           <div class="campo">
             <label>
               {{ campo.etiqueta }}
@@ -87,7 +105,7 @@
               }
             </label>
             @if (campo.tipo === 'desplegable') {
-              <select [name]="campo.campo" [(ngModel)]="forma[campo.campo]">
+              <select [name]="campo.campo" [(ngModel)]="forma[campo.campo]" [disabled]="esSoloLectura(campo)">
                 <option [ngValue]="null">
                   {{ campo.requerido ? 'Seleccione…' : '(ninguna)' }}
                 </option>
@@ -95,6 +113,11 @@
                   <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
                 }
               </select>
+              @if (!opcionesPendientes() && erroresOpciones()[campo.origen ?? '']) {
+                <span class="error-campo">No se pudieron cargar las opciones. Intenta actualizar la página.</span>
+              } @else if (!opcionesPendientes() && opcionesDe(campo).length === 0) {
+                <span class="error-campo">No hay opciones activas disponibles.</span>
+              }
             } @else if (campo.tipo === 'fecha') {
               <input
                 type="date"
@@ -115,11 +138,12 @@
               <span class="error-campo">{{ erroresPorCampo()[campo.campo] }}</span>
             }
           </div>
+          }
         }
 
         <div class="acciones-form">
           <button type="submit" class="btn-guardar">
-            {{ editando()!.esEdicion ? 'Guardar' : 'Crear' }}
+            {{ esPuentePuro() ? 'Asignar' : (editando()!.esEdicion ? 'Guardar' : (cfg.esRelacion ? 'Crear relación' : 'Crear')) }}
           </button>
           <button type="button" class="btn-cancelar" (click)="cerrarFormulario()">Cancelar</button>
         </div>

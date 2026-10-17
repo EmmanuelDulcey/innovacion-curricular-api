@@ -14,12 +14,14 @@
 El Frontend de la v2 **reutiliza** el de la v1 (SPA Angular con dashboard y
 catálogo genérico) y lo extiende para:
 
-1. Operar las **15 tablas con clave foránea** además de los 7 catálogos de la v1.
+1. Operar las **15 tablas con clave foránea** además de los 7 catálogos de la v1, con un catálogo auxiliar de docentes para resolver sus relaciones.
 2. **Elegir las FK con desplegables** (nunca escribir una clave a mano), sin
    mostrar la jerga `id`/clave al usuario.
 3. Manejar **fechas** con un control de fecha real, respetando el tipo
    (`DATE` → fecha; los `VARCHAR(45)` de fecha se mantienen como texto).
-4. Tratar las **tablas puente** sólo con **asignar / retirar** (sin editar).
+4. Editar los atributos de `docente_departamento` y `alianza` sin permitir
+   cambiar su pareja de claves; las cuatro tablas puente puras de Felipe sólo
+   permiten **asignar / retirar**.
 5. Ofrecer la pantalla **maestro-detalle de `programa`** para cargar sus tablas
    hijas sin salir de la vista.
 6. Mostrar el **409** con un mensaje castellano claro.
@@ -50,6 +52,7 @@ facultad            programa            acreditacion        registro_calificado
 activ_academica     pasantia            premio              docente_departamento
 alianza             programa_ac         programa_pe         programa_ci
 an_programa         enfoque_rc          aa_rc
+docente (catálogo auxiliar)
 ```
 
 ## 4. Modelos de datos
@@ -58,8 +61,14 @@ Igual que la v1: la API responde en `snake_case` y el Frontend mapea a
 `camelCase`. En la v2 cada fila trae además el **nombre de la FK** (`programa_nombre`,
 `universidad_nombre`, …), que es lo que se muestra en el listado:
 
+Los campos `id` que representan claves internas se ocultan al crear y se ven en
+los listados después de guardar. En **Áreas del programa**, cada opción se lee
+como `área — disciplina` para evitar asignaciones ambiguas. El documento de una
+persona y las claves de negocio (como el NIT del aliado) no se sustituyen por IDs.
+
 | Tabla | Interfaz (camelCase) | Tipo de llave |
 |---|---|---|
+| `docente` | `id`, `documento`, `nombre`, `activo` | `number` (`id`, automático); `documento` es dato único, no PK |
 | `facultad` | `id`, `nombre`, `tipo`, `fechaFun`, `universidad`, `universidadNombre`, `activo` | `number` (`id`) |
 | `programa` | `id`, `nombre`, `tipo`, `nivel`, `fechaCreacion`, `fechaCierre`, `numeroCohortes`, `cantGraduados`, `fechaActualizacion`, `ciudad`, `facultad`, `facultadNombre`, `numAcreditaciones`, `activo` | `number` (`id`) |
 | `pasantia` | `id`, `nombre`, `pais`, `empresa`, `descripcion`, `programa`, `programaNombre`, `activo` | `number` (`id`) |
@@ -93,7 +102,10 @@ export interface RespuestaCreacion<T> {
 - **`pages/dashboard`**: `Promise.all` sobre **22** tablas (7 + 15).
 - **`pages/catalogo`**: página genérica; en la v2 la configuración por tabla
   incluye **metadatos de columna**: si es FK (desplegable), si es fecha
-  (control de fecha) y si es opcional (opción «(ninguna)»).
+  (control de fecha), si es opcional (opción «(ninguna)») y si el ID lo genera
+  SQL Server (no se pide al crear).
+- **Navegación:** cambiar de sección restaura el scroll arriba para que cada
+  listado empiece desde su encabezado, aunque se llegue desde abajo de otra página.
 - **`pages/programa-detalle`**: pantalla nueva de maestro-detalle (§8).
 
 ## 6. Servicio (`api.service.ts`)
@@ -129,14 +141,21 @@ Igual que en la v1, más la fila nueva:
 
 - Cada campo FK se pinta como un **`<select>`** cuyas opciones se cargan con el
   `GET /api/{tablaMaestra}` correspondiente (utilizando `listar`).
+- Para `programa`, los formularios de Felipe usan temporalmente la ruta de
+  solo lectura `GET /api/opciones/programa`. Mantiene la selección funcional
+  sin asumir el CRUD de `programa` de otro módulo. Un fallo al cargar se
+  muestra junto al desplegable; una lista vacía se distingue del fallo.
 - **Se muestra el nombre** de la maestra y **se envía su clave** en el body.
 - Si una pantalla tiene **varias FK** (ej. `alianza`), las opciones se cargan
   **en paralelo** con `forkJoin` para no encadenar peticiones.
 - Sólo se ofrecen **maestras activas** (la API ya excluye inactivas).
 - **Campo opcional** (`activ_academica.disenio`): la primera opción es
   **«(ninguna)»** con valor `null`; el Frontend envía `null`, nunca `""`.
-- **`docente`** NO es desplegable (pertenece a otro módulo, sin origen de datos):
-  se captura como **número** ([4_research.md](4_research.md) D6).
+- **`docente`** sí es desplegable: se crea primero desde el catálogo auxiliar,
+  SQL Server genera su ID interno y el documento de identidad se conserva como
+  dato único separado. En `docente_departamento` y `alianza` se elige al docente
+  por nombre; el formulario envía el ID interno ([4_research.md](4_research.md)
+  D6).
 - **Fechas**: los campos `DATE` usan `<input type="date">`; los `VARCHAR(45)` de
   fecha (ej. `programa.fecha_creacion`) se mantienen como texto.
 
@@ -144,10 +163,12 @@ Igual que en la v1, más la fila nueva:
 
 - En las tablas normales: Crear / Editar / Eliminar como en la v1, con los
   desplegables de §8.
-- En las **tablas puente** (y en `docente_departamento` y `alianza`): **no hay
-  botón Editar**. Las acciones son **Asignar** (formulario de pareja) y
-  **Retirar** (por fila). La lista de selección de cada parte de la pareja sale
-  de su maestra.
+- En `docente_departamento` y `alianza`: **Editar** abre un formulario con sus
+  atributos. Las dos claves que identifican la relación quedan bloqueadas; al
+  guardar se envía PUT por la pareja original.
+- En las cuatro **tablas puente puras** de Felipe (`programa_ac`, `programa_pe`,
+  `programa_ci`, `an_programa`) no hay botón Editar: se puede **Asignar** una
+  pareja y **Retirarla**. Cada selector muestra el nombre de su maestra.
 - Textos en castellano, sin jerga técnica (`id`, `PK`, `FK`).
 
 ## 10. Pantalla maestro-detalle de `programa`
@@ -175,16 +196,18 @@ verde/gris), con el agregado de:
 
 ## 12. Criterios de aceptación del Frontend
 
-1. El dashboard muestra las tarjetas de las 22 tablas operables con sus totales.
+1. El dashboard muestra las tarjetas de las 22 tablas originales más el catálogo auxiliar de docentes (23 en total) con sus totales.
 2. Desde el navegador se crea/edita/retira un `facultad` y un `pasantia`, y el
    cambio persiste al recargar.
 3. Los campos FK salen como **desplegables con nombres** (no texto libre).
-4. La pantalla **maestro-detalle de `programa`** permite agregar detalle sin
+4. Las relaciones `docente_departamento` y `alianza` se editan sin cambiar sus
+   claves; las cuatro puentes puras solo ofrecen asignar/retirar.
+5. La pantalla **maestro-detalle de `programa`** permite agregar detalle sin
    salir.
-5. Las **tablas puente** sólo tienen Asignar / Retirar (sin Editar).
-6. Un `POST` inválido muestra los errores 422 por campo; un conflicto muestra el
+6. Las cuatro **puentes puras** sólo tienen Asignar / Retirar (sin Editar).
+7. Un `POST` inválido muestra los errores 422 por campo; un conflicto muestra el
    **409** con su mensaje; no rompe la interfaz.
-7. El contador `num_acreditaciones` cambia en la interfaz al asignar y al
+8. El contador `num_acreditaciones` cambia en la interfaz al asignar y al
    **retirar** una acreditación.
 
 > Corresponden a los criterios 2, 3, 4, 5, 6, 7, 9 y 10 de

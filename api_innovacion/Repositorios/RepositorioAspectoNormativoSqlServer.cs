@@ -39,17 +39,17 @@ public class RepositorioAspectoNormativoSqlServer : IRepositorioAspectoNormativo
         return await conexion.QuerySingleOrDefaultAsync<AspectoNormativo>(sql, new { id });
     }
 
-    public async Task CrearAsync(AspectoNormativo entidad)
+    public async Task<int> CrearAsync(AspectoNormativo entidad)
     {
         const string sql = """
-            INSERT INTO aspecto_normativo (id, tipo, descripcion, fuente, activo)
-            VALUES (@id, @tipo, @descripcion, @fuente, 1);
+            INSERT INTO aspecto_normativo (tipo, descripcion, fuente, activo)
+            OUTPUT INSERTED.id
+            VALUES (@tipo, @descripcion, @fuente, 1);
             """;
 
         await using var conexion = new SqlConnection(_cadenaConexion);
-        await conexion.ExecuteAsync(sql, new
+        return await conexion.QuerySingleAsync<int>(sql, new
         {
-            entidad.Id,
             entidad.Tipo,
             entidad.Descripcion,
             entidad.Fuente

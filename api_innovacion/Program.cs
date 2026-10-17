@@ -130,6 +130,41 @@ builder.Services.AddScoped<IRepositorioPremio>(
     _ => new RepositorioPremioSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioPremio, ServicioPremio>();
 
+// Issue 3 (v2): relaciones de Felipe. Cada par conserva el ensamblaje de la v1.
+builder.Services.AddScoped<IRepositorioProgramaOpciones>(
+    _ => new RepositorioProgramaOpcionesSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaOpciones, ServicioProgramaOpciones>();
+
+// Catálogo local: su ID identifica la ficha del sistema, el documento identifica
+// a la persona y nunca ocupa el lugar de la llave primaria.
+builder.Services.AddScoped<IRepositorioDocente>(
+    _ => new RepositorioDocenteSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioDocente, ServicioDocente>();
+
+builder.Services.AddScoped<IRepositorioDocenteDepartamento>(
+    _ => new RepositorioDocenteDepartamentoSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioDocenteDepartamento, ServicioDocenteDepartamento>();
+
+builder.Services.AddScoped<IRepositorioAlianza>(
+    _ => new RepositorioAlianzaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAlianza, ServicioAlianza>();
+
+builder.Services.AddScoped<IRepositorioProgramaAc>(
+    _ => new RepositorioProgramaAcSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaAc, ServicioProgramaAc>();
+
+builder.Services.AddScoped<IRepositorioProgramaPe>(
+    _ => new RepositorioProgramaPeSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaPe, ServicioProgramaPe>();
+
+builder.Services.AddScoped<IRepositorioProgramaCi>(
+    _ => new RepositorioProgramaCiSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaCi, ServicioProgramaCi>();
+
+builder.Services.AddScoped<IRepositorioAnPrograma>(
+    _ => new RepositorioAnProgramaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAnPrograma, ServicioAnPrograma>();
+
 var app = builder.Build();
 
 // -----------------------------------------------------------------------------
