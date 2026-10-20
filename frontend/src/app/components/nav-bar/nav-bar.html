@@ -1,7 +1,35 @@
-<nav class="nav-bar">
+<!-- Botón de hamburguesa: solo se ve en pantallas angostas (el CSS lo oculta
+     en escritorio, donde el menú está siempre a la vista). Sirve para abrir Y
+     cerrar: su icono cambia según el estado. -->
+<button
+  type="button"
+  class="btn-menu"
+  [attr.aria-expanded]="abierto()"
+  aria-label="Abrir o cerrar el menú"
+  (click)="alternar()"
+>
+  {{ abierto() ? '✕' : '☰' }}
+</button>
+
+<nav class="nav-bar" [class.abierto]="abierto()">
   <span class="marca">Innovación Curricular</span>
-  <a routerLink="/" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
-  @for (tabla of tablas; track tabla) {
-    <a [routerLink]="['/tablas', tabla]" routerLinkActive="activo">{{ nombreLegible(tabla) }}</a>
-  }
+
+  <!-- Todas las opciones en UNA sola columna: Dashboard primero y luego una
+       fila por tabla. La lista sale de TABLAS (nombreLegible la traduce); no
+       hay opciones escritas a mano ni agrupaciones. Al navegar se cierra el
+       menú en el celular. -->
+  <div class="opciones">
+    <a
+      routerLink="/"
+      routerLinkActive="activo"
+      [routerLinkActiveOptions]="{ exact: true }"
+      (click)="cerrar()"
+      >Dashboard</a
+    >
+    @for (tabla of tablas; track tabla) {
+      <a [routerLink]="['/tablas', tabla]" routerLinkActive="activo" (click)="cerrar()">{{
+        nombreLegible(tabla)
+      }}</a>
+    }
+  </div>
 </nav>

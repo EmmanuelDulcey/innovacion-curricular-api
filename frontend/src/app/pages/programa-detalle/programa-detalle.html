@@ -1,0 +1,180 @@
+<section class="detalle">
+  <app-mensaje-error [error]="errorCarga()" />
+
+  @if (cargando() && !programa()) {
+    <p class="vacio">Cargando el programa...</p>
+  } @else if (programa(); as prog) {
+    <header class="cabecera">
+      <div>
+        <h1>{{ prog['nombre'] }}</h1>
+        <p class="sub">
+          {{ prog['tipo'] }} · {{ prog['nivel'] }} · {{ prog['ciudad'] }}
+          @if (prog['facultad_nombre']) {
+            · Facultad: {{ prog['facultad_nombre'] }}
+          }
+        </p>
+      </div>
+      <a class="volver" routerLink="/tablas/programa">Volver a programas</a>
+    </header>
+
+    <!-- Estado derivado del disparador: cambia solo al asignar o retirar una
+         acreditación; la API nunca lo envía. -->
+    <div class="contador">
+      <span class="numero">{{ prog['num_acreditaciones'] }}</span>
+      <span class="leyenda">
+        Acreditaciones registradas (este número se actualiza solo al asignar o retirar una
+        acreditación)
+      </span>
+    </div>
+
+    <app-mensaje-error [error]="errorEnvio()" />
+
+    @for (seccion of secciones; track seccion.tabla) {
+      <section class="seccion">
+        <h2>{{ seccion.titulo }}</h2>
+
+        @if (avisos()[seccion.tabla]) {
+          <p class="vacio">{{ avisos()[seccion.tabla] }}</p>
+        } @else if ((registros()[seccion.tabla] ?? []).length === 0) {
+          <p class="vacio">No hay registros.</p>
+        } @else {
+          <div class="tabla-contenedor">
+            <table>
+              <thead>
+                <tr>
+                  @for (campo of seccion.campos; track campo.campo) {
+                    <th>{{ campo.etiqueta }}</th>
+                  }
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (fila of registros()[seccion.tabla]; track $index) {
+                  <tr>
+                    @for (campo of seccion.campos; track campo.campo) {
+                      <td>{{ valorTexto(fila, campo) }}</td>
+                    }
+                    <td class="acciones">
+                      <button type="button" class="btn-eliminar" (click)="retirarDeSeccion(seccion, fila)">
+                        Retirar
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if ((borradores()[seccion.tabla] ?? []).length > 0) {
+          <form (ngSubmit)="guardarRenglones(seccion)">
+            @for (fila of borradores()[seccion.tabla]; track $index) {
+              <div class="renglon">
+                @for (campo of seccion.campos; track campo.campo) {
+                  @if (!campo.soloLectura && !campo.generado) {
+                    <div class="campo">
+                      <label>
+                        {{ campo.etiqueta }}
+                        @if (campo.requerido) {
+                          <span class="req">*</span>
+                        }
+                      </label>
+                    @if (campo.tipo === 'desplegable' || campo.tipo === 'booleano') {
+                      <select
+                        [(ngModel)]="fila[campo.campo]"
+                        [name]="seccion.tabla + '-' + $index + '-' + campo.campo"
+                      >
+                        <option [ngValue]="null">
+                          {{ campo.requerido ? 'Seleccione…' : '(ninguna)' }}
+                        </option>
+                        @if (campo.tipo === 'booleano') {
+                          <option [ngValue]="1">Sí</option>
+                          <option [ngValue]="0">No</option>
+                        } @else {
+                          @for (opcion of opcionesDe(campo); track opcion.valor) {
+                            <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
+                          }
+                        }
+                      </select>
+                    } @else if (campo.tipo === 'fecha') {
+                      <input
+                        type="date"
+                        [(ngModel)]="fila[campo.campo]"
+                        [name]="seccion.tabla + '-' + $index + '-' + campo.campo"
+                      />
+                    } @else {
+                      <input
+                        [type]="campo.tipo === 'entero' ? 'number' : 'text'"
+                        [(ngModel)]="fila[campo.campo]"
+                        [name]="seccion.tabla + '-' + $index + '-' + campo.campo"
+                        step="1"
+                      />
+                    }
+                    </div>
+                  }
+                }
+                <button type="button" class="btn-cancelar" (click)="quitarRenglon(seccion, $index)">
+                  Quitar renglón
+                </button>
+              </div>
+            }
+
+            <div class="acciones-seccion">
+              <button
+                type="submit"
+                class="btn-guardar"
+                [disabled]="guardando() === seccion.tabla"
+              >
+                {{ guardando() === seccion.tabla ? 'Guardando...' : 'Guardar renglones' }}
+              </button>
+              <span class="nota-ayuda">
+                Los renglones se envían juntos: si uno falla, no queda ninguno.
+              </span>
+            </div>
+          </form>
+        }
+
+        <div class="acciones-seccion">
+          <button type="button" class="btn-cancelar" (click)="agregarRenglon(seccion)">
+            + Agregar renglón
+          </button>
+        </div>
+      </section>
+    }
+
+    @for (puente of puentes; track puente.tabla) {
+      <section class="seccion">
+        <h2>{{ puente.titulo }}</h2>
+
+        @if (avisos()[puente.tabla]) {
+          <p class="vacio">{{ avisos()[puente.tabla] }}</p>
+        } @else if ((registros()[puente.tabla] ?? []).length === 0) {
+          <p class="vacio">No hay registros.</p>
+        } @else {
+          <div class="tabla-contenedor">
+            <table>
+              <thead>
+                <tr>
+                  @for (columna of puente.columnasLectura; track columna.campo) {
+                    <th>{{ columna.etiqueta }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (fila of registros()[puente.tabla]; track $index) {
+                  <tr>
+                    @for (columna of puente.columnasLectura; track columna.campo) {
+                      <td>{{ fila[columna.campo] ?? '—' }}</td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <p class="nota-ayuda">Las parejas se asignan y se retiran desde su propio catálogo.</p>
+      </section>
+    }
+  }
+</section>

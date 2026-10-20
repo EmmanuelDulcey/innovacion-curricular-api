@@ -1,36 +1,126 @@
+/* =============================================================================
+   Menú lateral del frontend.
+   Antes era una barra horizontal "sticky"; ahora es una COLUMNA fija al borde
+   izquierdo, a altura completa. El contenido se acomoda con el margen que
+   reserva app.css (--ancho-menu): por eso el menú nunca lo tapa.
+   Solo cambia la disposición: se conservan los colores, los radios y la
+   tipografía que ya usaba la barra horizontal.
+   ============================================================================= */
+
+/* El componente entero ES el menú: se fija al borde izquierdo y ocupa toda la
+   altura de la ventana. `position: fixed` lo saca del flujo normal de la
+   página (por eso el contenido reserva su ancho con un margen, app.css) y
+   `overflow` del interior le da scroll PROPIO: si hay más opciones de las que
+   caben, se desplaza el menú, no la página. */
+:host {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--ancho-menu);
+  height: 100vh;
+  /* En celulares, `dvh` descuenta la barra del navegador para que la última
+     opción del menú no quede escondida detrás de ella. */
+  height: 100dvh;
+  z-index: 20;
+}
+
 .nav-bar {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  padding: 0.75rem 1.25rem;
-  background: #0f2a43;
+  flex-direction: column; /* título arriba y opciones debajo, en una columna */
+  height: 100%;
+  padding: 1rem 0.75rem;
+  background: var(--azul-oscuro); /* el mismo azul oscuro de la barra anterior */
   color: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  overflow-y: auto; /* scroll propio del menú cuando no cabe en la pantalla */
 }
 
+/* Título del proyecto, separado de las opciones por una línea sutil. */
 .marca {
   font-weight: 700;
-  margin-right: 1rem;
   font-size: 1rem;
+  padding: 0.2rem 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 0.6rem;
 }
 
-.nav-bar a {
+/* La lista de opciones: una sola columna, de arriba hacia abajo. */
+.opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Cada opción ocupa su propia fila completa (display: block), con los mismos
+   colores y el mismo tamaño de letra de la barra anterior. */
+.opciones a {
+  display: block;
   color: #dbe7f3;
   text-decoration: none;
-  padding: 0.4rem 0.7rem;
+  padding: 0.45rem 0.7rem;
   border-radius: 6px;
   font-size: 0.9rem;
 }
 
-.nav-bar a:hover {
+.opciones a:hover {
   background: #1e4a75;
 }
 
-.nav-bar a.activo {
-  background: #2d6a9f;
+/* Página activa: el mismo azul del botón resaltado de antes. */
+.opciones a.activo {
+  background: var(--azul-medio);
   color: #fff;
   font-weight: 600;
+}
+
+/* El botón de hamburguesa existe en el HTML siempre, pero en escritorio no se
+   muestra: allí el menú está fijo y visible. */
+.btn-menu {
+  display: none;
+}
+
+/* -----------------------------------------------------------------------------
+   Pantallas angostas (celular): el menú se esconde deslizándose fuera de la
+   pantalla y se abre con el botón ☰.
+   -------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  /* El menú conserva su ancho, pero limitado al 85% de la pantalla para que
+     se note que hay contenido detrás (y quede área para tocar). */
+  :host {
+    width: min(var(--ancho-menu), 85vw);
+  }
+
+  .nav-bar {
+    /* Escondido: corrido hacia la izquierda, fuera de la vista... */
+    transform: translateX(-100%);
+    transition: transform 0.2s ease; /* ...y entra deslizándose. */
+    /* Deja libre la esquina donde vive el botón ☰ (así no tapa el título). */
+    padding-top: 3.4rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .nav-bar.abierto {
+    transform: translateX(0);
+  }
+
+  /* El botón flota sobre la esquina superior izquierda, por ENCIMA del menú
+     (z-index mayor): con el menú escondido abre; con el menú abierto cierra
+     (su icono cambia a ✕). */
+  .btn-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0.6rem;
+    left: 0.6rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--azul-medio); /* azul de la paleta, visible sobre cualquier fondo */
+    color: #fff;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 30;
+  }
 }

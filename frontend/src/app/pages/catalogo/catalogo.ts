@@ -1,10 +1,11 @@
 // =============================================================================
 // QUÉ ES: página genérica de listado y formulario para /tablas/:tabla.
 // PAPEL: configura el catálogo desde catalogo.ts y concentra el filtrado en vivo,
-//       las opciones de claves y las operaciones sobre cada relación.
+//       las opciones de claves y las operaciones sobre cada registro o relación.
 // =============================================================================
 import { Component, computed, effect, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
@@ -22,10 +23,18 @@ import {
 
 // Pagina generica de CRUD /tablas/:tabla (RF9, 9_frontend.md §9). Recibe la
 // tabla por ruta (withComponentInputBinding), configura columnas y formulario a
-// partir de CATALOGOS y usa api.service para los cinco verbos.
+// partir de CATALOGOS y usa api.service para los verbos de cada tabla.
+//
+// Dos familias de tablas comparten esta pagina:
+//  * PK simple: crear / editar / eliminar como en la v1. Si la llave es
+//    interna (`generado`), SQL Server la asigna y el formulario nunca la pide.
+//  * identidad compuesta (relaciones/puentes): la pareja viaja en la ruta.
+//    Las puentes puras solo se asignan y retiran; docente_departamento y
+//    alianza ademas permiten editar sus atributos (PUT por pareja), sin
+//    cambiar las claves (6_contracts.md §8).
 @Component({
   selector: 'app-catalogo',
-  imports: [FormsModule, MensajeError],
+  imports: [FormsModule, MensajeError, RouterLink],
   templateUrl: './catalogo.html',
   styleUrl: './catalogo.css',
 })
@@ -136,7 +145,7 @@ export class Catalogo {
     const peticiones: Record<string, Observable<ResultadoOpcion>> = {};
     for (const origen of origenes) {
       // El CRUD de programa pertenece a otro módulo; esta ruta de lectura
-      // provee sus opciones activas sin ocupar /api/programa.
+      // (6_contracts.md §2) provee sus opciones activas sin ocupar /api/programa.
       const ruta = origen === 'programa' ? 'opciones/programa' : origen;
       peticiones[origen] = this.api
         .listar<CualquierRegistro>(ruta, 1000)
@@ -160,9 +169,12 @@ export class Catalogo {
         fallos[origen] = resultados[origen]?.fallo ?? false;
         mapa[origen] = (resultados[origen]?.respuesta?.datos ?? []).map((item) => ({
           valor: item[llave],
+          // Cada maestra aporta su etiqueta legible. Con `origenSubEtiqueta` se
+          // agrega un segundo dato para desambiguar (área — disciplina); si no,
+          // `etiquetaDe` resuelve etiquetas compuestas con '+' y cae a la clave.
           etiqueta: subEtiqueta
             ? `${item[etiqueta] ?? ''} — ${item[subEtiqueta] ?? ''}`
-            : String(item[etiqueta] ?? item[llave]),
+            : this.etiquetaDe(item, etiqueta, llave),
         }));
       }
       this.opciones.set(mapa);
@@ -184,9 +196,24 @@ export class Catalogo {
     return campo.origen ? this.opciones()[campo.origen] ?? [] : [];
   }
 
+  // Etiqueta visible de una opcion de desplegable. `etiqueta` puede nombrar
+  // varias columnas separadas con '+' (registro_calificado no tiene `nombre`:
+  // se muestra como "codigo - tipo_titulacion"); si no hay ningun valor, cae a
+  // la clave para que la opcion nunca quede en blanco.
+  private etiquetaDe(item: CualquierRegistro, etiqueta: string, llave: string): string {
+    const partes = etiqueta
+      .split('+')
+      .map((clave) => item[clave.trim()])
+      .filter((valor) => valor !== undefined && valor !== null && String(valor).trim() !== '');
+    if (partes.length === 0) return String(item[llave] ?? '');
+    return partes.map((valor) => String(valor)).join(' - ');
+  }
+
   // En el listado se muestra el nombre resuelto de la FK (<fk>_nombre) cuando el
-  // campo lo declara; si no, el valor crudo (9_frontend.md §4).
+  // campo lo declara; si no, el valor crudo (9_frontend.md §4). Los 0/1 de la
+  // base (espejo) se leen como Sí/No: la interfaz va sin jerga.
   valorVisible(fila: CualquierRegistro, campo: CampoConfig): unknown {
+    if (campo.tipo === 'booleano') return fila[campo.campo] === 1 ? 'Sí' : 'No';
     return campo.campoMostrar ? fila[campo.campoMostrar] : fila[campo.campo];
   }
 
@@ -201,10 +228,13 @@ export class Catalogo {
   abrirCrear() {
     const cfg = this.config()!;
     const fila: Record<string, any> = {};
-    // Un desplegable arranca en null (su opcion de relleno); el resto en cadena
-    // vacia. Asi el select no queda con un valor inexistente (9_frontend.md §8).
+    // Los desplegables, los Sí/No y los campos opcionales arrancan en null (la
+    // opción de relleno); el resto, en cadena vacía. Las columnas generadas
+    // por SQL Server y las de solo lectura no entran al formulario.
     for (const campo of cfg.campos) {
-      fila[campo.campo] = campo.tipo === 'desplegable' || !campo.requerido ? null : '';
+      if (campo.soloLectura || campo.generado) continue;
+      fila[campo.campo] =
+        campo.tipo === 'desplegable' || campo.tipo === 'booleano' || !campo.requerido ? null : '';
     }
     this.formaSeleccionada(fila, false);
   }
@@ -235,33 +265,38 @@ export class Catalogo {
     this.errorForm.set(null);
   }
 
-  // La pareja identifica de forma estable cada fila y conserva el orden de la
-  // ruta declarado en el contrato; la llave simple de la v1 sigue intacta.
-  claveFila(fila: CualquierRegistro): string {
+  // Una relación tiene identidad compuesta: sus DOS claves viajan en la ruta
+  // (orden del script) y la fila se maneja como pareja, no como registro suelto.
+  esCompuesta(): boolean {
+    const cfg = this.config();
+    return cfg !== undefined && (cfg.llaves !== undefined || cfg.esRelacion === true || cfg.esPuente === true);
+  }
+
+  // Solo las relaciones con atributos propios (permiteEdicion) tienen botón
+  // Editar: su PUT conserva las claves y cambia únicamente los atributos.
+  // Las cuatro puentes puras se quedan en asignar/retirar (tropiezo 9).
+  puedeEditar(): boolean {
+    const cfg = this.config();
+    return cfg !== undefined && (!this.esCompuesta() || cfg.permiteEdicion === true);
+  }
+
+  // Clave estable de una fila para el @for y las acciones: la pareja completa
+  // en las relaciones, la llave simple en el resto.
+  claveDe(fila: CualquierRegistro): string {
     const cfg = this.config()!;
     return cfg.llaves
       ? cfg.llaves.map((llave) => String(fila[llave])).join('|')
       : String(fila[cfg.llave]);
   }
 
-  // Las relaciones con columnas propias se pueden editar sin alterar su pareja;
-  // los puentes puros conservan solo las acciones de asignar y retirar.
-  puedeEditar(): boolean {
-    const cfg = this.config();
-    return cfg !== undefined && (!cfg.esRelacion || cfg.permiteEdicion === true);
-  }
-
-  esPuentePuro(): boolean {
-    const cfg = this.config();
-    return cfg?.esRelacion === true && cfg.permiteEdicion !== true;
-  }
-
   async eliminar(fila: CualquierRegistro) {
     const cfg = this.config()!;
-    if (!window.confirm(cfg.esRelacion ? '¿Retirar esta relación?' : '¿Eliminar este registro?')) return;
+    const pregunta = this.esCompuesta() ? '¿Retirar esta relación?' : '¿Eliminar este registro?';
+    if (!window.confirm(pregunta)) return;
 
     try {
       if (cfg.llaves) {
+        // Retirar una relación lleva las DOS claves de la PK, en su orden (§8.2).
         await lastValueFrom(this.api.retirar(cfg.nombre, fila[cfg.llaves[0]], fila[cfg.llaves[1]]));
       } else {
         await lastValueFrom(this.api.eliminar(cfg.nombre, fila[cfg.llave]));
@@ -284,32 +319,38 @@ export class Catalogo {
     }
     this.erroresPorCampo.set({});
 
-    const id = this.forma[cfg.llave];
     const body: Record<string, any> = {};
     for (const campo of cfg.campos) {
-      // Las claves que crea SQL Server nunca deben enviarse desde el formulario,
-      // tampoco al reemplazar un registro ya existente.
-      if (campo.generado) continue;
+      // Las claves que genera SQL Server y las columnas derivadas (el contador
+      // del disparador) nunca viajan en el body.
+      if (campo.generado || campo.soloLectura) continue;
       if (!esEdicion || campo.editable) {
         const valor = this.forma[campo.campo];
-        // Los campos opcionales vacíos viajan como null, no como cadena vacía.
+        // Los opcionales vacíos viajan como null, nunca como cadena vacía.
         body[campo.campo] = !campo.requerido && (valor === '' || valor === undefined) ? null : valor;
       }
     }
 
     try {
-      if (cfg.llaves && esEdicion) {
-        const filaOriginal = this.editando()!.fila;
-        await lastValueFrom(this.api.reemplazarRelacion(
-          cfg.nombre,
-          filaOriginal[cfg.llaves[0]],
-          filaOriginal[cfg.llaves[1]],
-          body,
-        ));
-      } else if (cfg.esRelacion) {
-        await lastValueFrom(this.api.asignar(cfg.nombre, body));
+      if (cfg.llaves) {
+        if (esEdicion) {
+          // PUT por pareja: las claves identifican la fila y no cambian; el
+          // body lleva solo los atributos editables.
+          const original = this.editando()!.fila;
+          await lastValueFrom(
+            this.api.reemplazarRelacion(
+              cfg.nombre,
+              original[cfg.llaves[0]],
+              original[cfg.llaves[1]],
+              body,
+            ),
+          );
+        } else {
+          // Asignar la pareja (POST de la relación).
+          await lastValueFrom(this.api.asignar(cfg.nombre, body));
+        }
       } else if (esEdicion) {
-        await lastValueFrom(this.api.reemplazar(cfg.nombre, id, body));
+        await lastValueFrom(this.api.reemplazar(cfg.nombre, this.forma[cfg.llave], body));
       } else {
         await lastValueFrom(this.api.crear(cfg.nombre, body));
       }
@@ -335,9 +376,7 @@ export class Catalogo {
   private validarFormulario(cfg: TablaConfig): Record<string, string> {
     const errores: Record<string, string> = {};
     for (const campo of cfg.campos) {
-      // El identificador autogenerado no se captura ni se valida en la interfaz.
-      if (campo.generado) continue;
-      if (this.esSoloLectura(campo)) continue;
+      if (campo.soloLectura || campo.generado || this.esSoloLectura(campo)) continue;
 
       const valor = this.forma[campo.campo];
       const vacio = valor === undefined || valor === null || String(valor).trim() === '';
@@ -348,13 +387,22 @@ export class Catalogo {
       }
       if (!vacio) {
         const texto = String(valor).trim();
-        if (campo.tipo === 'entero' && (!Number.isInteger(Number(texto)) || Number(texto) <= 0)) {
-          errores[campo.campo] = `El campo ${campo.campo} debe ser un entero positivo.`;
-          continue;
+        if (campo.tipo === 'entero') {
+          const numero = Number(texto);
+          // Las llaves naturales deben ser positivas; los contadores
+          // (num_creditos, h_acom, h_indep) admiten 0, igual que la API.
+          if (campo.esLlave && (!Number.isInteger(numero) || numero <= 0)) {
+            errores[campo.campo] = `El campo ${campo.campo} debe ser un entero positivo.`;
+            continue;
+          }
+          if (!campo.esLlave && (!Number.isInteger(numero) || numero < 0)) {
+            errores[campo.campo] = `El campo ${campo.campo} no puede ser negativo.`;
+            continue;
+          }
         }
         // El mensaje es el mismo que devuelve la API en el 422, para que el
         // usuario vea el texto idéntico venga de donde venga la validación
-        // (6_contracts.md §4.7). La API sigue siendo la autoridad final.
+        // (6_contracts.md §4.3). La API sigue siendo la autoridad final.
         if (campo.tipo === 'correo' && !this.esCorreo(texto)) {
           errores[campo.campo] = `El campo ${campo.campo} debe tener un formato válido.`;
           continue;
@@ -368,6 +416,7 @@ export class Catalogo {
         }
       }
     }
+    // Coherencia de fechas propias de las relaciones de Felipe (6_contracts §8.3).
     if (cfg.nombre === 'alianza' && this.forma['fecha_fin'] && this.forma['fecha_inicio']
       && this.forma['fecha_fin'] < this.forma['fecha_inicio']) {
       errores['fecha_fin'] = 'La fecha de fin no puede ser anterior a la fecha de inicio.';
@@ -380,8 +429,8 @@ export class Catalogo {
   }
 
   // Comprobacion de formato de correo previa al envio: exige algo@algo.algo
-  // sin espacios. La validacion definitiva la hace la API con [EmailAddress]
-  // (6_contracts.md §8.7); esta solo evita el viaje innecesario al servidor.
+  // sin espacios. La validacion definitiva la hace la API con [EmailAddress];
+  // esta solo evita el viaje innecesario al servidor.
   private esCorreo(texto: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(texto);
   }
