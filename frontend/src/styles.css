@@ -5,11 +5,6 @@
   --gris-texto: #3d4a57;
   --gris-suave: #5a6b7c;
   --borde: #d4dce4;
-  /* Ancho del menú lateral. Vive aquí porque lo necesitan DOS archivos: el
-     menú (nav-bar.css, que se fija a ese ancho) y el contenido (app.css, que
-     reserva ese mismo espacio con un margen). Con una sola variable no pueden
-     desincronizarse. */
-  --ancho-menu: 240px;
 }
 
 * {

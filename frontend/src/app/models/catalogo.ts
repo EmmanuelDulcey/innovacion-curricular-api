@@ -1,12 +1,9 @@
 // =============================================================================
-// catalogo.ts
-// Modelos del Frontend de la v1. La API responde en snake_case (6_contracts.md);
-// aqui se definen las interfaces en camelCase (9_frontend.md §4) y la
-// configuracion generica que usa la pagina /tablas/:tabla para armar columnas
-// y formularios con las reglas de 6_contracts.md §8.
-// Issue 1 (Emmanuel): area_conocimiento y universidad.
-// Issue 2 (Felipe): aspecto_normativo, practica_estrategia y enfoque.
-// Issue 3 (Valentina): car_innovacion y aliado.
+// QUÉ ES: contratos TypeScript y metadatos de los catálogos de la aplicación.
+// PAPEL: permite que una sola página genere tablas y formularios configurables,
+//       mientras mantiene tipadas las respuestas y opciones de las claves.
+// La API responde con sus nombres de contrato; las interfaces de dominio usan
+// camelCase y la configuración conserva el nombre de cada columna SQL.
 // =============================================================================
 
 // --- Contratos auxiliares (9_frontend.md §4) -------------------------------
@@ -130,90 +127,6 @@ export interface Premio {
   activo: boolean;
 }
 
-// --- Entidades de la v2 (issue #2, Valentina) --------------------------------
-// programa es el maestro central; le cuelgan acreditaciones, registros
-// calificados y actividades academicas, y las puentes enfoque_rc y aa_rc.
-
-export interface Programa {
-  id: number;
-  nombre: string;
-  tipo: string;
-  nivel: string;
-  fechaCreacion: string;     // es TEXTO en la base (VARCHAR), no fecha
-  fechaCierre: string | null;
-  numeroCohortes: string;
-  cantGraduados: string;
-  fechaActualizacion: string;
-  ciudad: string;
-  facultad: number;
-  facultadNombre?: string;
-  // Solo lectura: lo mantiene el disparador al asignar/retirar acreditaciones.
-  numAcreditaciones: number;
-  activo: boolean;
-}
-
-export interface Acreditacion {
-  resolucion: number;
-  tipo: string;
-  calificacion: string;
-  fechaInicio: string;       // TEXTO en la base
-  fechaFin: string;          // TEXTO en la base
-  programa: number;
-  programaNombre?: string;
-  activo: boolean;
-}
-
-export interface RegistroCalificado {
-  codigo: number;
-  cantCreditos: string;
-  horaAcom: string;
-  horaInd: string;
-  metodologia: string;
-  fechaInicio: string;       // DATE -> "yyyy-MM-dd"
-  fechaFin: string;          // DATE -> "yyyy-MM-dd"
-  duracionAnios: string;
-  duracionSemestres: string;
-  tipoTitulacion: string;
-  programa: number;
-  programaNombre?: string;
-  activo: boolean;
-}
-
-export interface ActivAcademica {
-  id: number;
-  nombre: string;
-  numCreditos: number;
-  tipo: string;
-  areaFormacion: string;
-  hAcom: number;
-  hIndep: number;
-  idioma: string;
-  espejo: number;            // TINYINT 0/1
-  entidadEspejo: string;
-  paisEspejo: string;
-  disenio: number | null;    // la unica clave foranea OPCIONAL (→ null)
-  disenioNombre?: string;
-  activo: boolean;
-}
-
-export interface EnfoqueRc {
-  enfoque: number;
-  registroCalificado: number;
-  enfoqueNombre?: string;
-  registroCalificadoNombre?: string;
-  activo: boolean;
-}
-
-export interface AaRc {
-  activAcademicasIdcurso: number;
-  registroCalificadoCodigo: number;
-  componente: string;
-  semestre: string;
-  activAcademicaNombre?: string;
-  registroCalificadoNombre?: string;
-  activo: boolean;
-}
-
 // Relaciones de Felipe (v2): la API usa snake_case; estas interfaces son el
 // contrato tipado que consumen otros componentes Angular.
 export interface DocenteDepartamento {
@@ -284,20 +197,16 @@ export interface CampoConfig {
   // 'correo' se comporta como 'texto' pero ademas valida formato de correo
   // antes de enviar (lo exige el formulario de `aliado`, issue #3 punto 8).
   // 'desplegable' es una clave foranea (select); 'fecha' es un DATE (input date).
-  // 'booleano' es un 0/1 de la base (p. ej. activ_academica.espejo): select Sí/No.
-  tipo: 'texto' | 'entero' | 'correo' | 'desplegable' | 'fecha' | 'booleano';
+  tipo: 'texto' | 'entero' | 'correo' | 'desplegable' | 'fecha';
   requerido: boolean;
   editable: boolean;    // indica si el campo puede modificarse al editar un registro
   maximo: number | null;
   esLlave?: boolean;
-  // Columna que la API mantiene sola (p. ej. programa.num_acreditaciones, que lo
-  // escribe el disparador): se muestra en el listado pero NUNCA viaja en el body.
-  soloLectura?: boolean;
   generado?: boolean;          // la base genera la clave; nunca se captura en formularios
   opcionesFijas?: string[];     // valores permitidos por el formulario, sin consultar otro catálogo
   // Metadatos de las claves foraneas (solo 'desplegable', 9_frontend.md §8):
   origen?: string;              // tabla maestra de la que salen las opciones
-  origenEtiqueta?: string;      // columna(s) a mostrar; varias se unen con '+' (por defecto 'nombre')
+  origenEtiqueta?: string;      // columna a mostrar (por defecto 'nombre')
   origenSubEtiqueta?: string;   // segundo dato de contexto para evitar opciones ambiguas
   campoMostrar?: string;        // columna con el nombre resuelto (<fk>_nombre) para el listado
 }
@@ -310,15 +219,11 @@ export interface TablaConfig {
   esRelacion?: boolean;          // la identidad se forma con dos claves compuestas
   permiteEdicion?: boolean;      // relaciones con atributos propios: PUT/PATCH conservan las claves
   campos: CampoConfig[];
-  // Tabla puente (v2): la pareja se asigna y se retira; no hay boton Editar ni
-  // PUT/PATCH (9_frontend.md §9 y tropiezo 9). La PK es la union de los campos
-  // marcados con esLlave, en su orden.
-  esPuente?: boolean;
 }
 
 // Las tablas disponibles (valores válidos de :tabla, 9_frontend.md §3). En la v2
-// se suman facultad, pasantia y premio (issue #1) y el bloque de Valentina
-// (issue #2); las tablas restantes de la v2 las integran los otros issues.
+// se suman facultad, pasantia y premio (issue #1); las demás tablas de la v2 las
+// integran los otros issues.
 export const TABLAS: string[] = [
   'area_conocimiento',
   'universidad',
@@ -330,14 +235,6 @@ export const TABLAS: string[] = [
   'facultad',
   'pasantia',
   'premio',
-  // Issue #2 (Valentina)
-  'programa',
-  'acreditacion',
-  'registro_calificado',
-  'activ_academica',
-  'enfoque_rc',
-  'aa_rc',
-  //felipe
   'docente',
   'docente_departamento',
   'alianza',
@@ -388,7 +285,7 @@ export const CATALOGOS: Record<string, TablaConfig> = {
     nombreLegible: 'Aspecto normativo',
     llave: 'id',
     campos: [
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
+      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
       { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'descripcion', etiqueta: 'Descripción', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
       { campo: 'fuente', etiqueta: 'Fuente', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
@@ -510,200 +407,6 @@ export const CATALOGOS: Record<string, TablaConfig> = {
         origenEtiqueta: 'nombre',
         campoMostrar: 'programa_nombre',
       },
-    ],
-  },
-  // --- v2 (issue #2, Valentina) ---------------------------------------------
-  programa: {
-    nombre: 'programa',
-    nombreLegible: 'Programa',
-    llave: 'id',
-    campos: [
-      // El id interno lo genera SQL Server (secuencia): no se captura al crear
-      // y sí se muestra en el listado (5_data_model.md §2 y 9_frontend.md §4).
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
-      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 60 },
-      { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'nivel', etiqueta: 'Nivel', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      // Las fechas de programa son TEXTO en la base (4_research.md D13): se
-      // capturan como texto, no con el control de fecha.
-      { campo: 'fecha_creacion', etiqueta: 'Fecha de creación', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'fecha_cierre', etiqueta: 'Fecha de cierre', tipo: 'texto', requerido: false, editable: true, maximo: 45 },
-      { campo: 'numero_cohortes', etiqueta: 'Número de cohortes', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'cant_graduados', etiqueta: 'Cantidad de graduados', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'fecha_actualizacion', etiqueta: 'Fecha de actualización', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'ciudad', etiqueta: 'Ciudad', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      {
-        campo: 'facultad',
-        etiqueta: 'Facultad',
-        tipo: 'desplegable',
-        requerido: true,
-        editable: true,
-        maximo: null,
-        origen: 'facultad',
-        origenEtiqueta: 'nombre',
-        campoMostrar: 'facultad_nombre',
-      },
-      // Lo mantiene el disparador: se ve en el listado, nunca viaja en el body.
-      { campo: 'num_acreditaciones', etiqueta: 'Acreditaciones', tipo: 'entero', requerido: false, editable: false, maximo: null, soloLectura: true },
-    ],
-  },
-  acreditacion: {
-    nombre: 'acreditacion',
-    nombreLegible: 'Acreditación',
-    llave: 'resolucion',
-    campos: [
-      { campo: 'resolucion', etiqueta: 'Resolución', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
-      { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'calificacion', etiqueta: 'Calificación', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      // TEXTO en la base (a diferencia de registro_calificado, que usa DATE).
-      { campo: 'fecha_inicio', etiqueta: 'Fecha de inicio', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'fecha_fin', etiqueta: 'Fecha de fin', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      {
-        campo: 'programa',
-        etiqueta: 'Programa',
-        tipo: 'desplegable',
-        requerido: true,
-        editable: true,
-        maximo: null,
-        origen: 'programa',
-        origenEtiqueta: 'nombre',
-        campoMostrar: 'programa_nombre',
-      },
-    ],
-  },
-  registro_calificado: {
-    nombre: 'registro_calificado',
-    nombreLegible: 'Registro calificado',
-    llave: 'codigo',
-    campos: [
-      { campo: 'codigo', etiqueta: 'Código', tipo: 'entero', requerido: true, editable: false, maximo: null, esLlave: true },
-      { campo: 'cant_creditos', etiqueta: 'Cantidad de créditos', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'hora_acom', etiqueta: 'Horas acompañadas', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'hora_ind', etiqueta: 'Horas independientes', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'metodologia', etiqueta: 'Metodología', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'fecha_inicio', etiqueta: 'Fecha de inicio', tipo: 'fecha', requerido: true, editable: true, maximo: null },
-      { campo: 'fecha_fin', etiqueta: 'Fecha de fin', tipo: 'fecha', requerido: true, editable: true, maximo: null },
-      { campo: 'duracion_anios', etiqueta: 'Duración en años', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'duracion_semestres', etiqueta: 'Duración en semestres', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'tipo_titulacion', etiqueta: 'Tipo de titulación', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      {
-        campo: 'programa',
-        etiqueta: 'Programa',
-        tipo: 'desplegable',
-        requerido: true,
-        editable: true,
-        maximo: null,
-        origen: 'programa',
-        origenEtiqueta: 'nombre',
-        campoMostrar: 'programa_nombre',
-      },
-    ],
-  },
-  activ_academica: {
-    nombre: 'activ_academica',
-    nombreLegible: 'Actividad académica',
-    llave: 'id',
-    campos: [
-      // Id interno generado por SQL Server (secuencia), igual que programa.
-      { campo: 'id', etiqueta: 'ID', tipo: 'entero', requerido: false, editable: false, maximo: null, esLlave: true, generado: true },
-      { campo: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'num_creditos', etiqueta: 'Número de créditos', tipo: 'entero', requerido: true, editable: true, maximo: null },
-      { campo: 'tipo', etiqueta: 'Tipo', tipo: 'texto', requerido: true, editable: true, maximo: 20 },
-      { campo: 'area_formacion', etiqueta: 'Área de formación', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'h_acom', etiqueta: 'Horas acompañadas', tipo: 'entero', requerido: true, editable: true, maximo: null },
-      { campo: 'h_indep', etiqueta: 'Horas independientes', tipo: 'entero', requerido: true, editable: true, maximo: null },
-      { campo: 'idioma', etiqueta: 'Idioma', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      // TINYINT 0/1: se captura con Sí/No (el API espera 1 o 0, nunca texto).
-      { campo: 'espejo', etiqueta: '¿Es espejo?', tipo: 'booleano', requerido: true, editable: true, maximo: null },
-      { campo: 'entidad_espejo', etiqueta: 'Entidad espejo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'pais_espejo', etiqueta: 'País espejo', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      // La UNICA FK opcional: sin requerido, el select ofrece «(ninguna)» → null.
-      {
-        campo: 'disenio',
-        etiqueta: 'Programa (diseño)',
-        tipo: 'desplegable',
-        requerido: false,
-        editable: true,
-        maximo: null,
-        origen: 'programa',
-        origenEtiqueta: 'nombre',
-        campoMostrar: 'disenio_nombre',
-      },
-    ],
-  },
-  enfoque_rc: {
-    nombre: 'enfoque_rc',
-    nombreLegible: 'Enfoques del registro',
-    llave: 'enfoque',
-    // Pareja de la PK en el orden del script: identifica la fila y viaja en
-    // la ruta de consulta y de retiro (6_contracts.md §8.2).
-    llaves: ['enfoque', 'registro_calificado'],
-    esPuente: true,
-    campos: [
-      // Las dos claves de la pareja, en el orden de la PK (contrato §0.2).
-      {
-        campo: 'enfoque',
-        etiqueta: 'Enfoque',
-        tipo: 'desplegable',
-        requerido: true,
-        editable: false,
-        maximo: null,
-        esLlave: true,
-        origen: 'enfoque',
-        origenEtiqueta: 'nombre',
-        campoMostrar: 'enfoque_nombre',
-      },
-      {
-        campo: 'registro_calificado',
-        etiqueta: 'Registro calificado',
-        tipo: 'desplegable',
-        requerido: true,
-        editable: false,
-        maximo: null,
-        esLlave: true,
-        origen: 'registro_calificado',
-        // registro_calificado no tiene columna `nombre`: la etiqueta combina
-        // codigo y tipo_titulacion (separadas con '+').
-        origenEtiqueta: 'codigo+tipo_titulacion',
-        campoMostrar: 'registro_calificado_nombre',
-      },
-    ],
-  },
-  aa_rc: {
-    nombre: 'aa_rc',
-    nombreLegible: 'Actividades del registro',
-    llave: 'activ_academicas_idcurso',
-    // Pareja de la PK con los nombres largos del script, en su orden.
-    llaves: ['activ_academicas_idcurso', 'registro_calificado_codigo'],
-    esPuente: true,
-    campos: [
-      {
-        campo: 'activ_academicas_idcurso',
-        etiqueta: 'Actividad académica',
-        tipo: 'desplegable',
-        requerido: true,
-        editable: false,
-        maximo: null,
-        esLlave: true,
-        origen: 'activ_academica',
-        origenEtiqueta: 'nombre',
-        campoMostrar: 'activ_academica_nombre',
-      },
-      {
-        campo: 'registro_calificado_codigo',
-        etiqueta: 'Registro calificado',
-        tipo: 'desplegable',
-        requerido: true,
-        editable: false,
-        maximo: null,
-        esLlave: true,
-        origen: 'registro_calificado',
-        origenEtiqueta: 'codigo+tipo_titulacion',
-        campoMostrar: 'registro_calificado_nombre',
-      },
-      // Atributos propios de la pareja: viajan en la asignación, sin edición.
-      { campo: 'componente', etiqueta: 'Componente', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
-      { campo: 'semestre', etiqueta: 'Semestre', tipo: 'texto', requerido: true, editable: true, maximo: 45 },
     ],
   },
   // --- v2, issue de Felipe: relaciones con atributos y tablas puente puras --

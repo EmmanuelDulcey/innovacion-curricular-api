@@ -121,22 +121,6 @@ tr:last-child td {
   margin-right: 0.35rem;
 }
 
-/* Enlace al maestro-detalle del programa (mismo aspecto que los botones). */
-.btn-detalle {
-  display: inline-block;
-  background: #eef7ee;
-  color: #1c7a31;
-  margin-right: 0.35rem;
-  padding: 0.3rem 0.7rem;
-  border-radius: 5px;
-  font-size: 0.8rem;
-  text-decoration: none;
-}
-
-.btn-detalle:hover {
-  background: #dcefdc;
-}
-
 .btn-eliminar {
   background: #fdeeee;
   color: #a33;

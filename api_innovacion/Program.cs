@@ -130,32 +130,6 @@ builder.Services.AddScoped<IRepositorioPremio>(
     _ => new RepositorioPremioSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioPremio, ServicioPremio>();
 
-// Issue #2 (v2) - programa, acreditacion, registro_calificado, activ_academica
-// y las puentes enfoque_rc y aa_rc (procedimientos almacenados).
-builder.Services.AddScoped<IRepositorioPrograma>(
-    _ => new RepositorioProgramaSqlServer(cadenaConexion));
-builder.Services.AddScoped<IServicioPrograma, ServicioPrograma>();
-
-builder.Services.AddScoped<IRepositorioAcreditacion>(
-    _ => new RepositorioAcreditacionSqlServer(cadenaConexion));
-builder.Services.AddScoped<IServicioAcreditacion, ServicioAcreditacion>();
-
-builder.Services.AddScoped<IRepositorioRegistroCalificado>(
-    _ => new RepositorioRegistroCalificadoSqlServer(cadenaConexion));
-builder.Services.AddScoped<IServicioRegistroCalificado, ServicioRegistroCalificado>();
-
-builder.Services.AddScoped<IRepositorioActivAcademica>(
-    _ => new RepositorioActivAcademicaSqlServer(cadenaConexion));
-builder.Services.AddScoped<IServicioActivAcademica, ServicioActivAcademica>();
-
-builder.Services.AddScoped<IRepositorioEnfoqueRc>(
-    _ => new RepositorioEnfoqueRcSqlServer(cadenaConexion));
-builder.Services.AddScoped<IServicioEnfoqueRc, ServicioEnfoqueRc>();
-
-builder.Services.AddScoped<IRepositorioAaRc>(
-    _ => new RepositorioAaRcSqlServer(cadenaConexion));
-builder.Services.AddScoped<IServicioAaRc, ServicioAaRc>();
-
 // Issue 3 (v2): relaciones de Felipe. Cada par conserva el ensamblaje de la v1.
 builder.Services.AddScoped<IRepositorioProgramaOpciones>(
     _ => new RepositorioProgramaOpcionesSqlServer(cadenaConexion));

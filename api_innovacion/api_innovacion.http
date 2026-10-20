@@ -1,21 +1,14 @@
 @host = http://localhost:8036
 
 # =============================================================================
-# Colección de pruebas de la API — Versión 2 (API completa: v1 v2 + issue de
-# Felipe). Contratos: docs/spec_kit/versiones/v2/6_contracts.md.
+# Colección de pruebas de la API — Versión 2 (issue #1: facultad, pasantia, premio)
 #
 # Requiere la API en http://localhost:8036 (docker compose up -d --build).
 # Incluye casos VÁLIDOS y casos que DEBEN FALLAR (409, 422, 404), como pide la
-# guía. Las relaciones de Felipe tienen además su propia colección en
-# pruebas/FelipeV2.http.
+# guía. Contratos: docs/spec_kit/versiones/v2/6_contracts.md.
 #
-# IMPORTANTE — IDs GENERADOS: desde la v2 actual, SQL Server asigna los `id`
-# internos (secuencias) y `docente` usa IDENTITY. Por eso:
-#   * los POST de esas tablas NO llevan "id";
-#   * donde un paso siguiente necesite ese id (URL, FK), copia el valor que
-#     devolvió el POST anterior en `datos.id` y reemplaza el ejemplo (10).
-# Las claves naturales (acreditacion.resolucion, registro_calificado.codigo,
-# aliado.nit) y las parejas compuestas siguen viajando desde el cliente.
+# Nota: pasantia y premio dependen de GET /api/programa (tabla de Valentina,
+# issue aparte). Se asume y se prueba con el programa id 10.
 # =============================================================================
 
 
@@ -29,129 +22,77 @@ Accept: application/json
 
 
 # -----------------------------------------------------------------------------
-# 2. docente — catálogo auxiliar (ID automático; documento único)
-# -----------------------------------------------------------------------------
-
-### Listar docentes
-GET {{host}}/api/docente?limite=100
-Accept: application/json
-
-### Crear docente — 200 (devuelve la ficha con el id generado)
-POST {{host}}/api/docente
-Content-Type: application/json
-
-{
-  "documento": "1020304050",
-  "nombre": "María Restrepo"
-}
-
-### Obtener el docente creado — 200 (usa el id devuelto en datos.id)
-GET {{host}}/api/docente/1
-Accept: application/json
-
-### Reemplazar (PUT) docente — 200
-PUT {{host}}/api/docente/1
-Content-Type: application/json
-
-{
-  "documento": "1020304050",
-  "nombre": "María Restrepo Gómez"
-}
-
-### Actualizar parcial (PATCH) docente — 200
-PATCH {{host}}/api/docente/1
-Content-Type: application/json
-
-{
-  "nombre": "María Restrepo G."
-}
-
-### FALLA: documento duplicado — 409
-POST {{host}}/api/docente
-Content-Type: application/json
-
-{
-  "documento": "1020304050",
-  "nombre": "Otra persona"
-}
-
-### FALLA: body inválido (documento vacío) — 422
-POST {{host}}/api/docente
-Content-Type: application/json
-
-{
-  "documento": "",
-  "nombre": "Sin documento"
-}
-
-### FALLA: PATCH sin campos — 400
-PATCH {{host}}/api/docente/1
-Content-Type: application/json
-
-{}
-
-### FALLA: recurso inexistente — 404
-GET {{host}}/api/docente/999999
-Accept: application/json
-
-### Eliminar docente — 200 (solo si no tiene relaciones activas)
-DELETE {{host}}/api/docente/1
-
-### FALLA: segundo DELETE — 404
-DELETE {{host}}/api/docente/1
-
-
-# -----------------------------------------------------------------------------
-# 3. facultad — maestro de programa (id generado)
+# 2. facultad
 # -----------------------------------------------------------------------------
 
 ### Listar facultades — 200 {tabla, limite, total, datos} (o 204 si está vacía)
 GET {{host}}/api/facultad?limite=100
 Accept: application/json
 
-### Crear facultad — 200 (sin id; copia datos.id para los pasos siguientes)
+### Obtener facultad 100 — 200 (o 404)
+GET {{host}}/api/facultad/100
+Accept: application/json
+
+### Crear facultad — 200 {estado, mensaje, datos} (devuelve la fila guardada)
 POST {{host}}/api/facultad
 Content-Type: application/json
 
 {
-  "nombre": "Facultad de Ingeniería",
+  "id": 100,
+  "nombre": "Facultad de Prueba",
   "tipo": "Pública",
-  "fecha_fun": "1958-01-01",
-  "universidad": 2
+  "fecha_fun": "1990-01-15",
+  "universidad": 1
 }
 
-### Obtener facultad — 200 (usa el id devuelto; ejemplo 10)
-GET {{host}}/api/facultad/10
-Accept: application/json
-
-### Reemplazar (PUT) facultad — 200
-PUT {{host}}/api/facultad/10
+### Reemplazar (PUT) facultad 100 — 200
+PUT {{host}}/api/facultad/100
 Content-Type: application/json
 
 {
-  "nombre": "Facultad de Ingeniería",
-  "tipo": "Pública",
-  "fecha_fun": "1958-01-01",
-  "universidad": 2
+  "nombre": "Facultad de Prueba 2",
+  "tipo": "Privada",
+  "fecha_fun": "1990-01-15",
+  "universidad": 1
 }
 
-### Actualizar parcial (PATCH) facultad — 200
-PATCH {{host}}/api/facultad/10
+### Actualizar parcial (PATCH) facultad 100 — 200
+PATCH {{host}}/api/facultad/100
 Content-Type: application/json
 
 {
-  "tipo": "Privada"
+  "tipo": "Pública"
 }
+
+### Eliminar (DELETE, borrado lógico) facultad 100 — 200 filasEliminadas: 1
+DELETE {{host}}/api/facultad/100
+
+### Segundo DELETE facultad 100 — 404 (ya no hay registro activo)
+DELETE {{host}}/api/facultad/100
 
 ### FALLA: FK inexistente (universidad 99999) — 409
 POST {{host}}/api/facultad
 Content-Type: application/json
 
 {
-  "nombre": "Facultad X",
+  "id": 101,
+  "nombre": "X",
   "tipo": "Pública",
   "fecha_fun": "1990-01-15",
   "universidad": 99999
+}
+
+### FALLA: PK duplicada (crear 100 dos veces) — 409
+# Ejecutar dos veces este mismo request; la segunda → 409.
+POST {{host}}/api/facultad
+Content-Type: application/json
+
+{
+  "id": 150,
+  "nombre": "Facultad duplicada",
+  "tipo": "Pública",
+  "fecha_fun": "1990-01-15",
+  "universidad": 1
 }
 
 ### FALLA: body inválido (nombre vacío) — 422
@@ -159,14 +100,15 @@ POST {{host}}/api/facultad
 Content-Type: application/json
 
 {
+  "id": 102,
   "nombre": "",
   "tipo": "Pública",
   "fecha_fun": "1990-01-15",
-  "universidad": 2
+  "universidad": 1
 }
 
 ### FALLA: PATCH sin campos — 400
-PATCH {{host}}/api/facultad/10
+PATCH {{host}}/api/facultad/150
 Content-Type: application/json
 
 {}
@@ -176,610 +118,38 @@ GET {{host}}/api/facultad/999999
 Accept: application/json
 
 ### FALLA: retirar una facultad con programas activos — 409
-# Requiere que la facultad tenga al menos un programa activo (sección 4).
-DELETE {{host}}/api/facultad/10
+# Para reproducir: crear primero un programa (issue de Valentina) con esta
+# facultad y luego intentar el DELETE.
+DELETE {{host}}/api/facultad/150
 
 
 # -----------------------------------------------------------------------------
-# 4. programa — maestro central (id generado; num_acreditaciones del disparador)
-# -----------------------------------------------------------------------------
-
-### Listar programas
-GET {{host}}/api/programa?limite=100
-Accept: application/json
-
-### Crear programa — 200 (sin id; copia datos.id para los pasos siguientes)
-POST {{host}}/api/programa
-Content-Type: application/json
-
-{
-  "nombre": "Ingeniería de Sistemas",
-  "tipo": "Profesional",
-  "nivel": "Pregrado",
-  "fecha_creacion": "2001-02-01",
-  "fecha_cierre": null,
-  "numero_cohortes": "24",
-  "cant_graduados": "320",
-  "fecha_actualizacion": "2025-01-15",
-  "ciudad": "Medellín",
-  "facultad": 10
-}
-
-### Obtener programa — 200 (usa el id devuelto; ejemplo 20)
-GET {{host}}/api/programa/20
-Accept: application/json
-
-### Reemplazar (PUT) programa — 200
-PUT {{host}}/api/programa/20
-Content-Type: application/json
-
-{
-  "nombre": "Ingeniería de Sistemas",
-  "tipo": "Profesional",
-  "nivel": "Pregrado",
-  "fecha_creacion": "2001-02-01",
-  "fecha_cierre": "2030-12-31",
-  "numero_cohortes": "26",
-  "cant_graduados": "330",
-  "fecha_actualizacion": "2025-06-30",
-  "ciudad": "Medellín",
-  "facultad": 10
-}
-
-### Actualizar parcial (PATCH) programa — 200
-PATCH {{host}}/api/programa/20
-Content-Type: application/json
-
-{
-  "ciudad": "Bogotá"
-}
-
-### FALLA: FK inexistente (facultad 99999) — 409
-POST {{host}}/api/programa
-Content-Type: application/json
-
-{
-  "nombre": "Programa X",
-  "tipo": "Profesional",
-  "nivel": "Pregrado",
-  "fecha_creacion": "2010-01-01",
-  "numero_cohortes": "10",
-  "cant_graduados": "50",
-  "fecha_actualizacion": "2025-01-01",
-  "ciudad": "Medellín",
-  "facultad": 99999
-}
-
-### FALLA: body inválido (nombre vacío) — 422
-POST {{host}}/api/programa
-Content-Type: application/json
-
-{
-  "nombre": "",
-  "tipo": "Profesional",
-  "nivel": "Pregrado",
-  "fecha_creacion": "2010-01-01",
-  "numero_cohortes": "10",
-  "cant_graduados": "50",
-  "fecha_actualizacion": "2025-01-01",
-  "ciudad": "Medellín",
-  "facultad": 10
-}
-
-### FALLA: PATCH sin campos — 400
-PATCH {{host}}/api/programa/20
-Content-Type: application/json
-
-{}
-
-### FALLA: recurso inexistente — 404
-GET {{host}}/api/programa/999999
-Accept: application/json
-
-### FALLA: retirar un programa con hijos activos — 409
-# Requiere que el programa tenga una acreditación o registro activo (secciones 5-6).
-DELETE {{host}}/api/programa/20
-
-
-# -----------------------------------------------------------------------------
-# 5. acreditacion — PK natural `resolucion`; aquí se demuestra el DISPARADOR
-# -----------------------------------------------------------------------------
-
-### Listar acreditaciones
-GET {{host}}/api/acreditacion?limite=100
-Accept: application/json
-
-### Crear acreditación 400 — 200 (la PK resolucion sí la envía el cliente)
-POST {{host}}/api/acreditacion
-Content-Type: application/json
-
-{
-  "resolucion": 400,
-  "tipo": "Nacional",
-  "calificacion": "Alta calidad",
-  "fecha_inicio": "2020-01-01",
-  "fecha_fin": "2024-01-01",
-  "programa": 20
-}
-
-### Disparador 1/2: el contador del programa debe subir SOLO (num_acreditaciones = 1)
-GET {{host}}/api/programa/20
-Accept: application/json
-
-### Obtener acreditación 400
-GET {{host}}/api/acreditacion/400
-Accept: application/json
-
-### Reemplazar (PUT) acreditación 400 — 200
-PUT {{host}}/api/acreditacion/400
-Content-Type: application/json
-
-{
-  "tipo": "Internacional",
-  "calificacion": "Excelente",
-  "fecha_inicio": "2021-01-01",
-  "fecha_fin": "2025-01-01",
-  "programa": 20
-}
-
-### Actualizar parcial (PATCH) acreditación 400 — 200
-PATCH {{host}}/api/acreditacion/400
-Content-Type: application/json
-
-{
-  "calificacion": "Superior"
-}
-
-### FALLA: PK de negocio duplicada (resolucion 400 repetida) — 409
-POST {{host}}/api/acreditacion
-Content-Type: application/json
-
-{
-  "resolucion": 400,
-  "tipo": "Nacional",
-  "calificacion": "Alta calidad",
-  "fecha_inicio": "2020-01-01",
-  "fecha_fin": "2024-01-01",
-  "programa": 20
-}
-
-### FALLA: FK inexistente (programa 99999) — 409
-POST {{host}}/api/acreditacion
-Content-Type: application/json
-
-{
-  "resolucion": 401,
-  "tipo": "Nacional",
-  "calificacion": "Alta calidad",
-  "fecha_inicio": "2020-01-01",
-  "fecha_fin": "2024-01-01",
-  "programa": 99999
-}
-
-### FALLA: body inválido (fecha_fin vacía) — 422
-POST {{host}}/api/acreditacion
-Content-Type: application/json
-
-{
-  "resolucion": 402,
-  "tipo": "Nacional",
-  "calificacion": "Alta calidad",
-  "fecha_inicio": "2020-01-01",
-  "fecha_fin": "",
-  "programa": 20
-}
-
-### Eliminar (DELETE) acreditación 400 — 200
-DELETE {{host}}/api/acreditacion/400
-
-### Disparador 2/2: el contador debe bajar SOLO (retirar es un UPDATE)
-# Esta es la prueba del tropiezo 6: el disparador escucha el UPDATE.
-GET {{host}}/api/programa/20
-Accept: application/json
-
-### FALLA: segundo DELETE de la acreditación 400 — 404
-DELETE {{host}}/api/acreditacion/400
-
-
-# -----------------------------------------------------------------------------
-# 6. registro_calificado — PK natural `codigo`; padre de enfoque_rc y aa_rc
-# -----------------------------------------------------------------------------
-
-### Listar registros calificados
-GET {{host}}/api/registro_calificado?limite=100
-Accept: application/json
-
-### Crear registro calificado 500 — 200 (queda activo: lo usan las puentes)
-POST {{host}}/api/registro_calificado
-Content-Type: application/json
-
-{
-  "codigo": 500,
-  "cant_creditos": "160",
-  "hora_acom": "20",
-  "hora_ind": "30",
-  "metodologia": "Presencial",
-  "fecha_inicio": "2020-01-15",
-  "fecha_fin": "2024-01-15",
-  "duracion_anios": "4",
-  "duracion_semestres": "8",
-  "tipo_titulacion": "Profesional",
-  "programa": 20
-}
-
-### Obtener registro calificado 500
-GET {{host}}/api/registro_calificado/500
-Accept: application/json
-
-### Reemplazar (PUT) registro calificado 500 — 200
-PUT {{host}}/api/registro_calificado/500
-Content-Type: application/json
-
-{
-  "cant_creditos": "170",
-  "hora_acom": "22",
-  "hora_ind": "28",
-  "metodologia": "Híbrida",
-  "fecha_inicio": "2021-01-15",
-  "fecha_fin": "2025-01-15",
-  "duracion_anios": "4",
-  "duracion_semestres": "8",
-  "tipo_titulacion": "Profesional",
-  "programa": 20
-}
-
-### Actualizar parcial (PATCH) registro calificado 500 — 200
-PATCH {{host}}/api/registro_calificado/500
-Content-Type: application/json
-
-{
-  "duracion_anios": "5"
-}
-
-### Crear registro calificado 501 (para el ciclo de borrado) — 200
-POST {{host}}/api/registro_calificado
-Content-Type: application/json
-
-{
-  "codigo": 501,
-  "cant_creditos": "120",
-  "hora_acom": "15",
-  "hora_ind": "25",
-  "metodologia": "Virtual",
-  "fecha_inicio": "2022-01-15",
-  "fecha_fin": "2026-01-15",
-  "duracion_anios": "4",
-  "duracion_semestres": "8",
-  "tipo_titulacion": "Tecnólogo",
-  "programa": 20
-}
-
-### Eliminar (DELETE) registro calificado 501 — 200
-DELETE {{host}}/api/registro_calificado/501
-
-### FALLA: segundo DELETE del registro 501 — 404
-DELETE {{host}}/api/registro_calificado/501
-
-### FALLA: FK inexistente (programa 99999) — 409
-POST {{host}}/api/registro_calificado
-Content-Type: application/json
-
-{
-  "codigo": 502,
-  "cant_creditos": "120",
-  "hora_acom": "15",
-  "hora_ind": "25",
-  "metodologia": "Virtual",
-  "fecha_inicio": "2022-01-15",
-  "fecha_fin": "2026-01-15",
-  "duracion_anios": "4",
-  "duracion_semestres": "8",
-  "tipo_titulacion": "Tecnólogo",
-  "programa": 99999
-}
-
-### FALLA: body inválido (codigo no positivo) — 422
-POST {{host}}/api/registro_calificado
-Content-Type: application/json
-
-{
-  "codigo": 0,
-  "cant_creditos": "120",
-  "hora_acom": "15",
-  "hora_ind": "25",
-  "metodologia": "Virtual",
-  "fecha_inicio": "2022-01-15",
-  "fecha_fin": "2026-01-15",
-  "duracion_anios": "4",
-  "duracion_semestres": "8",
-  "tipo_titulacion": "Tecnólogo",
-  "programa": 20
-}
-
-
-# -----------------------------------------------------------------------------
-# 7. activ_academica — id generado; la única FK OPCIONAL (`disenio`) → null
-# -----------------------------------------------------------------------------
-
-### Listar actividades académicas
-GET {{host}}/api/activ_academica?limite=100
-Accept: application/json
-
-### Crear actividad académica con disenio null (opcional) — 200 (sin id)
-POST {{host}}/api/activ_academica
-Content-Type: application/json
-
-{
-  "nombre": "Cátedra de innovación",
-  "num_creditos": 3,
-  "tipo": "Curso",
-  "area_formacion": "Sociohumanística",
-  "h_acom": 4,
-  "h_indep": 5,
-  "idioma": "Español",
-  "espejo": 0,
-  "entidad_espejo": "N/A",
-  "pais_espejo": "N/A",
-  "disenio": null
-}
-
-### Obtener actividad académica — 200 (usa el id devuelto; ejemplo 30)
-GET {{host}}/api/activ_academica/30
-Accept: application/json
-
-### Reemplazar (PUT) actividad — 200
-PUT {{host}}/api/activ_academica/30
-Content-Type: application/json
-
-{
-  "nombre": "Cátedra de innovación abierta",
-  "num_creditos": 3,
-  "tipo": "Curso",
-  "area_formacion": "Sociohumanística",
-  "h_acom": 4,
-  "h_indep": 6,
-  "idioma": "Español",
-  "espejo": 1,
-  "entidad_espejo": "Universidad de Antioquia",
-  "pais_espejo": "Colombia",
-  "disenio": 20
-}
-
-### Actualizar parcial (PATCH) actividad — 200
-PATCH {{host}}/api/activ_academica/30
-Content-Type: application/json
-
-{
-  "h_acom": 5
-}
-
-### Crear actividad (para el ciclo de borrado) — 200
-POST {{host}}/api/activ_academica
-Content-Type: application/json
-
-{
-  "nombre": "Electiva de emprendimiento",
-  "num_creditos": 2,
-  "tipo": "Electiva",
-  "area_formacion": "Disciplinar",
-  "h_acom": 2,
-  "h_indep": 2,
-  "idioma": "Español",
-  "espejo": 0,
-  "entidad_espejo": "N/A",
-  "pais_espejo": "N/A",
-  "disenio": null
-}
-
-### Eliminar (DELETE) actividad — 200 (usa el id devuelto; ejemplo 31)
-DELETE {{host}}/api/activ_academica/31
-
-### FALLA: segundo DELETE de la actividad — 404
-DELETE {{host}}/api/activ_academica/31
-
-### FALLA: FK opcional inexistente (disenio 99999) — 409
-POST {{host}}/api/activ_academica
-Content-Type: application/json
-
-{
-  "nombre": "Actividad X",
-  "num_creditos": 2,
-  "tipo": "Curso",
-  "area_formacion": "Disciplinar",
-  "h_acom": 2,
-  "h_indep": 2,
-  "idioma": "Español",
-  "espejo": 0,
-  "entidad_espejo": "N/A",
-  "pais_espejo": "N/A",
-  "disenio": 99999
-}
-
-### FALLA: body inválido (espejo fuera de 0/1) — 422
-POST {{host}}/api/activ_academica
-Content-Type: application/json
-
-{
-  "nombre": "Actividad X",
-  "num_creditos": 2,
-  "tipo": "Curso",
-  "area_formacion": "Disciplinar",
-  "h_acom": 2,
-  "h_indep": 2,
-  "idioma": "Español",
-  "espejo": 7,
-  "entidad_espejo": "N/A",
-  "pais_espejo": "N/A",
-  "disenio": null
-}
-
-
-# -----------------------------------------------------------------------------
-# 8. enfoque_rc — puente pura: asignar y retirar; SIN PUT ni PATCH
-# -----------------------------------------------------------------------------
-
-### Crear un enfoque (v1, id generado) para la pareja — 200
-POST {{host}}/api/enfoque
-Content-Type: application/json
-
-{
-  "nombre": "Enfoque de prueba",
-  "descripcion": "Para la puente enfoque_rc"
-}
-
-### Listar enfoques del registro
-GET {{host}}/api/enfoque_rc?limite=100
-Accept: application/json
-
-### Asignar la pareja (enfoque devuelto; ejemplo 5, registro 500) — 200
-POST {{host}}/api/enfoque_rc
-Content-Type: application/json
-
-{
-  "enfoque": 5,
-  "registro_calificado": 500
-}
-
-### Obtener la pareja (5, 500)
-GET {{host}}/api/enfoque_rc/5/500
-Accept: application/json
-
-### FALLA: pareja repetida — 409
-POST {{host}}/api/enfoque_rc
-Content-Type: application/json
-
-{
-  "enfoque": 5,
-  "registro_calificado": 500
-}
-
-### FALLA: enfoque inexistente — 409
-POST {{host}}/api/enfoque_rc
-Content-Type: application/json
-
-{
-  "enfoque": 99999,
-  "registro_calificado": 500
-}
-
-### FALLA: registro calificado inexistente — 409
-POST {{host}}/api/enfoque_rc
-Content-Type: application/json
-
-{
-  "enfoque": 5,
-  "registro_calificado": 99999
-}
-
-### FALLA: body inválido (falta registro_calificado) — 422
-POST {{host}}/api/enfoque_rc
-Content-Type: application/json
-
-{
-  "enfoque": 5
-}
-
-### FALLA: retirar el registro calificado 500 con la pareja activa — 409
-DELETE {{host}}/api/registro_calificado/500
-
-### Retirar la pareja (5, 500) — 200
-DELETE {{host}}/api/enfoque_rc/5/500
-
-### FALLA: retirar la pareja otra vez — 404
-DELETE {{host}}/api/enfoque_rc/5/500
-
-
-# -----------------------------------------------------------------------------
-# 9. aa_rc — puente con atributos (componente y semestre)
-# -----------------------------------------------------------------------------
-
-### Listar actividades del registro
-GET {{host}}/api/aa_rc?limite=100
-Accept: application/json
-
-### Asignar la pareja (actividad devuelta; ejemplo 30, registro 500) — 200
-POST {{host}}/api/aa_rc
-Content-Type: application/json
-
-{
-  "activ_academicas_idcurso": 30,
-  "registro_calificado_codigo": 500,
-  "componente": "Investigación",
-  "semestre": "2025-1"
-}
-
-### Obtener la pareja (30, 500)
-GET {{host}}/api/aa_rc/30/500
-Accept: application/json
-
-### FALLA: pareja repetida — 409
-POST {{host}}/api/aa_rc
-Content-Type: application/json
-
-{
-  "activ_academicas_idcurso": 30,
-  "registro_calificado_codigo": 500,
-  "componente": "Investigación",
-  "semestre": "2025-1"
-}
-
-### FALLA: actividad académica inexistente — 409
-POST {{host}}/api/aa_rc
-Content-Type: application/json
-
-{
-  "activ_academicas_idcurso": 99999,
-  "registro_calificado_codigo": 500,
-  "componente": "Investigación",
-  "semestre": "2025-1"
-}
-
-### FALLA: body inválido (falta componente) — 422
-POST {{host}}/api/aa_rc
-Content-Type: application/json
-
-{
-  "activ_academicas_idcurso": 30,
-  "registro_calificado_codigo": 500,
-  "semestre": "2025-1"
-}
-
-### FALLA: retirar la actividad académica con la pareja activa — 409
-DELETE {{host}}/api/activ_academica/30
-
-### Retirar la pareja (30, 500) — 200
-DELETE {{host}}/api/aa_rc/30/500
-
-### FALLA: retirar la pareja otra vez — 404
-DELETE {{host}}/api/aa_rc/30/500
-
-
-# -----------------------------------------------------------------------------
-# 10. pasantia y premio (issue de Emmanuel) — id generado
+# 3. pasantia (detalle de programa)
 # -----------------------------------------------------------------------------
 
 ### Listar pasantías
 GET {{host}}/api/pasantia?limite=100
 Accept: application/json
 
-### Crear pasantía — 200 (sin id; usa el id devuelto en los pasos siguientes)
+### Obtener pasantía 200
+GET {{host}}/api/pasantia/200
+Accept: application/json
+
+### Crear pasantía — 200 (devuelve la fila guardada con programa_nombre)
 POST {{host}}/api/pasantia
 Content-Type: application/json
 
 {
+  "id": 200,
   "nombre": "Pasantía internacional",
   "pais": "Chile",
   "empresa": "ACME S.A.",
   "descripcion": "Práctica profesional en el exterior",
-  "programa": 20
+  "programa": 10
 }
 
-### Obtener pasantía — 200 (id devuelto; ejemplo 40)
-GET {{host}}/api/pasantia/40
-Accept: application/json
-
-### Reemplazar (PUT) pasantía — 200
-PUT {{host}}/api/pasantia/40
+### Reemplazar (PUT) pasantía 200 — 200
+PUT {{host}}/api/pasantia/200
 Content-Type: application/json
 
 {
@@ -787,28 +157,29 @@ Content-Type: application/json
   "pais": "Colombia",
   "empresa": "Ecopetrol",
   "descripcion": "Práctica en el país",
-  "programa": 20
+  "programa": 10
 }
 
-### Actualizar parcial (PATCH) pasantía — 200
-PATCH {{host}}/api/pasantia/40
+### Actualizar parcial (PATCH) pasantía 200 — 200
+PATCH {{host}}/api/pasantia/200
 Content-Type: application/json
 
 {
   "empresa": "Ecopetrol S.A."
 }
 
-### Eliminar (DELETE) pasantía — 200
-DELETE {{host}}/api/pasantia/40
+### Eliminar (DELETE) pasantía 200 — 200
+DELETE {{host}}/api/pasantia/200
 
-### FALLA: segundo DELETE pasantía — 404
-DELETE {{host}}/api/pasantia/40
+### Segundo DELETE pasantía 200 — 404
+DELETE {{host}}/api/pasantia/200
 
 ### FALLA: FK inexistente (programa 99999) — 409
 POST {{host}}/api/pasantia
 Content-Type: application/json
 
 {
+  "id": 201,
   "nombre": "Pasantía X",
   "pais": "Chile",
   "empresa": "ACME S.A.",
@@ -816,29 +187,48 @@ Content-Type: application/json
   "programa": 99999
 }
 
+### FALLA: body inválido (id no positivo) — 422
+POST {{host}}/api/pasantia
+Content-Type: application/json
+
+{
+  "id": 0,
+  "nombre": "Pasantía X",
+  "pais": "Chile",
+  "empresa": "ACME S.A.",
+  "descripcion": "Prueba",
+  "programa": 10
+}
+
+
+# -----------------------------------------------------------------------------
+# 4. premio (detalle de programa)
+# -----------------------------------------------------------------------------
+
 ### Listar premios
 GET {{host}}/api/premio?limite=100
 Accept: application/json
 
-### Crear premio — 200 (sin id; usa el id devuelto en los pasos siguientes)
+### Obtener premio 300
+GET {{host}}/api/premio/300
+Accept: application/json
+
+### Crear premio — 200 (devuelve la fila guardada con programa_nombre)
 POST {{host}}/api/premio
 Content-Type: application/json
 
 {
+  "id": 300,
   "nombre": "Premio a la innovación",
   "descripcion": "Reconocimiento nacional",
   "fecha": "2020-11-20",
   "entidad_otorgante": "MEN",
   "pais": "Colombia",
-  "programa": 20
+  "programa": 10
 }
 
-### Obtener premio — 200 (id devuelto; ejemplo 41)
-GET {{host}}/api/premio/41
-Accept: application/json
-
-### Reemplazar (PUT) premio — 200
-PUT {{host}}/api/premio/41
+### Reemplazar (PUT) premio 300 — 200
+PUT {{host}}/api/premio/300
 Content-Type: application/json
 
 {
@@ -847,28 +237,29 @@ Content-Type: application/json
   "fecha": "2021-05-10",
   "entidad_otorgante": "UNESCO",
   "pais": "Francia",
-  "programa": 20
+  "programa": 10
 }
 
-### Actualizar parcial (PATCH) premio — 200
-PATCH {{host}}/api/premio/41
+### Actualizar parcial (PATCH) premio 300 — 200
+PATCH {{host}}/api/premio/300
 Content-Type: application/json
 
 {
   "pais": "Suiza"
 }
 
-### Eliminar (DELETE) premio — 200
-DELETE {{host}}/api/premio/41
+### Eliminar (DELETE) premio 300 — 200
+DELETE {{host}}/api/premio/300
 
-### FALLA: segundo DELETE premio — 404
-DELETE {{host}}/api/premio/41
+### Segundo DELETE premio 300 — 404
+DELETE {{host}}/api/premio/300
 
 ### FALLA: FK inexistente (programa 99999) — 409
 POST {{host}}/api/premio
 Content-Type: application/json
 
 {
+  "id": 301,
   "nombre": "Premio X",
   "descripcion": "Prueba",
   "fecha": "2020-11-20",
@@ -876,6 +267,3 @@ Content-Type: application/json
   "pais": "Colombia",
   "programa": 99999
 }
-
-# Las relaciones con atributos y las puentes puras de Felipe tienen su propia
-# colección: pruebas/FelipeV2.http.

@@ -9,7 +9,7 @@
     <div class="fila-acciones">
       <input
         type="search"
-        placeholder="Filtrar por texto..."
+        placeholder="Escribe para filtrar..."
         [value]="filtro()"
         (input)="actualizarFiltro($event)"
         class="filtro"
@@ -24,10 +24,7 @@
         />
       </label>
       @if (config()) {
-        <!-- En una relación la acción de alta es asignar la pareja (§8). -->
-        <button class="btn-crear" (click)="abrirCrear()">
-          {{ esCompuesta() ? '+ Asignar' : '+ Crear' }}
-        </button>
+        <button class="btn-crear" (click)="abrirCrear()">{{ esPuentePuro() ? '+ Asignar' : '+ Crear' }}</button>
       }
     </div>
   </header>
@@ -57,7 +54,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (fila of registrosFiltrados(); track claveDe(fila)) {
+          @for (fila of registrosFiltrados(); track claveFila(fila)) {
             <tr>
               @for (campo of config()!.campos; track campo.campo) {
                 <td>{{ valorVisible(fila, campo) }}</td>
@@ -68,19 +65,12 @@
                 </span>
               </td>
               <td class="acciones">
-                @if (!puedeEditar()) {
-                  <!-- Puentes puras: la pareja solo se asigna y se retira. -->
-                  <button class="btn-eliminar" (click)="eliminar(fila)">Retirar</button>
-                } @else {
-                  @if (config()!.nombre === 'programa') {
-                    <!-- Maestro-detalle: abre la pantalla del programa. -->
-                    <a class="btn-detalle" [routerLink]="['/programas', fila['id']]">Detalle</a>
-                  }
+                @if (puedeEditar()) {
                   <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
-                  <button class="btn-eliminar" (click)="eliminar(fila)">
-                    {{ esCompuesta() ? 'Retirar' : 'Eliminar' }}
-                  </button>
                 }
+                <button class="btn-eliminar" (click)="eliminar(fila)">
+                  {{ config()!.esRelacion ? 'Retirar' : 'Eliminar' }}
+                </button>
               </td>
             </tr>
           }
@@ -91,80 +81,69 @@
 
   @if (mostrarFormulario() && config(); as cfg) {
     <div class="formulario">
-      <h2>
-        {{
-          editando()!.esEdicion
-            ? 'Editar'
-            : (esCompuesta() ? (cfg.permiteEdicion ? 'Asignar relación' : 'Asignar pareja') : 'Crear registro')
-        }}
-      </h2>
-      @if (!esCompuesta()) {
-        <p class="nota">
-          @if (cfg.campos.some(c => c.generado)) {
-            El identificador lo genera el sistema; no se captura.
-          } @else {
-            La llave (<code>{{ cfg.llave }}</code>) solo se asigna al crear; no se edita después.
-          }
-        </p>
-      }
+      <h2>{{ esPuentePuro() ? 'Asignar relación' : (editando()!.esEdicion ? 'Editar registro' : 'Crear registro') }}</h2>
+      <p class="nota">
+        @if (editando()!.esEdicion && cfg.permiteEdicion) {
+          Puedes cambiar los datos de la relación; sus registros vinculados permanecen iguales.
+        } @else if (cfg.esRelacion) {
+          Selecciona los registros que deseas vincular.
+        } @else {
+          El identificador se asigna automáticamente y aparece en el listado al guardar.
+        }
+      </p>
 
       <app-mensaje-error [error]="errorForm()" />
 
       <form (ngSubmit)="guardar()">
         @for (campo of cfg.campos; track campo.campo) {
-          @if (!campo.soloLectura && !campo.generado) {
-            <div class="campo">
-              <label>
-                {{ campo.etiqueta }}
-                @if (campo.requerido) {
-                  <span class="req">*</span>
+          @if (!campo.generado) {
+          <div class="campo">
+            <label>
+              {{ campo.etiqueta }}
+              @if (campo.requerido) {
+                <span class="req">*</span>
+              }
+            </label>
+            @if (campo.tipo === 'desplegable') {
+              <select [name]="campo.campo" [(ngModel)]="forma[campo.campo]" [disabled]="esSoloLectura(campo)">
+                <option [ngValue]="null">
+                  {{ campo.requerido ? 'Seleccione…' : '(ninguna)' }}
+                </option>
+                @for (opcion of opcionesDe(campo); track opcion.valor) {
+                  <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
                 }
-              </label>
-              @if (campo.tipo === 'desplegable' || campo.tipo === 'booleano') {
-                <select [name]="campo.campo" [(ngModel)]="forma[campo.campo]">
-                  <option [ngValue]="null">
-                    {{ campo.requerido ? 'Seleccione…' : '(ninguna)' }}
-                  </option>
-                  @if (campo.tipo === 'booleano') {
-                    <!-- TINYINT 0/1: se envía el número, nunca texto. -->
-                    <option [ngValue]="1">Sí</option>
-                    <option [ngValue]="0">No</option>
-                  } @else {
-                    @for (opcion of opcionesDe(campo); track opcion.valor) {
-                      <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
-                    }
-                  }
-                </select>
-              } @else if (campo.tipo === 'fecha') {
-                <input
-                  type="date"
-                  [name]="campo.campo"
-                  [(ngModel)]="forma[campo.campo]"
-                  [readonly]="esSoloLectura(campo)"
-                />
-              } @else {
-                <input
-                  [type]="campo.tipo === 'entero' ? 'number' : 'text'"
-                  [name]="campo.campo"
-                  [(ngModel)]="forma[campo.campo]"
-                  [readonly]="esSoloLectura(campo)"
-                  step="1"
-                />
+              </select>
+              @if (!opcionesPendientes() && erroresOpciones()[campo.origen ?? '']) {
+                <span class="error-campo">No se pudieron cargar las opciones. Intenta actualizar la página.</span>
+              } @else if (!opcionesPendientes() && opcionesDe(campo).length === 0) {
+                <span class="error-campo">No hay opciones activas disponibles.</span>
               }
-              @if (erroresPorCampo()[campo.campo]) {
-                <span class="error-campo">{{ erroresPorCampo()[campo.campo] }}</span>
-              }
-            </div>
+            } @else if (campo.tipo === 'fecha') {
+              <input
+                type="date"
+                [name]="campo.campo"
+                [(ngModel)]="forma[campo.campo]"
+                [readonly]="esSoloLectura(campo)"
+              />
+            } @else {
+              <input
+                [type]="campo.tipo === 'entero' ? 'number' : 'text'"
+                [name]="campo.campo"
+                [(ngModel)]="forma[campo.campo]"
+                [readonly]="esSoloLectura(campo)"
+                step="1"
+              />
+            }
+            @if (erroresPorCampo()[campo.campo]) {
+              <span class="error-campo">{{ erroresPorCampo()[campo.campo] }}</span>
+            }
+          </div>
           }
         }
 
         <div class="acciones-form">
           <button type="submit" class="btn-guardar">
-            {{
-              editando()!.esEdicion
-                ? 'Guardar'
-                : (esCompuesta() ? 'Asignar' : 'Crear')
-            }}
+            {{ esPuentePuro() ? 'Asignar' : (editando()!.esEdicion ? 'Guardar' : (cfg.esRelacion ? 'Crear relación' : 'Crear')) }}
           </button>
           <button type="button" class="btn-cancelar" (click)="cerrarFormulario()">Cancelar</button>
         </div>

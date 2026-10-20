@@ -1,20 +1,6 @@
-/* El menú lateral es `position: fixed` (nav-bar.css): no ocupa espacio en el
-   flujo de la página. Por eso el contenido RESERVA su ancho con este margen
-   izquierdo; el margen derecho automático lo centra en el espacio restante,
-   como hacía antes. */
 .contenido {
   max-width: 1200px;
-  margin: 0 auto 0 var(--ancho-menu);
+  margin: 0 auto;
   padding: 0.5rem;
-  min-height: 100vh;
-}
-
-/* En pantallas angostas el menú se esconde (off-canvas, nav-bar.css): el
-   contenido usa todo el ancho y el botón ☰ flota sobre la esquina. */
-@media (max-width: 767.98px) {
-  .contenido {
-    margin-left: 0;
-    /* Espacio arriba para que el botón ☰ no tape el inicio de la página. */
-    padding-top: 3.4rem;
-  }
+  min-height: calc(100vh - 56px);
 }
