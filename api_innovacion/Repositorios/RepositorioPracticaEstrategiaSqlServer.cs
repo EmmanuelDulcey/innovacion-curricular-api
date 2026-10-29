@@ -39,17 +39,17 @@ public class RepositorioPracticaEstrategiaSqlServer : IRepositorioPracticaEstrat
         return await conexion.QuerySingleOrDefaultAsync<PracticaEstrategia>(sql, new { id });
     }
 
-    public async Task CrearAsync(PracticaEstrategia entidad)
+    public async Task<int> CrearAsync(PracticaEstrategia entidad)
     {
         const string sql = """
-            INSERT INTO practica_estrategia (id, tipo, nombre, descripcion, activo)
-            VALUES (@id, @tipo, @nombre, @descripcion, 1);
+            INSERT INTO practica_estrategia (tipo, nombre, descripcion, activo)
+            OUTPUT INSERTED.id
+            VALUES (@tipo, @nombre, @descripcion, 1);
             """;
 
         await using var conexion = new SqlConnection(_cadenaConexion);
-        await conexion.ExecuteAsync(sql, new
+        return await conexion.QuerySingleAsync<int>(sql, new
         {
-            entidad.Id,
             entidad.Tipo,
             entidad.Nombre,
             entidad.Descripcion

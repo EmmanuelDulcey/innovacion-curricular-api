@@ -35,15 +35,15 @@ public class ServicioCarInnovacion : IServicioCarInnovacion
         return registro;
     }
 
-    public async Task CrearAsync(CarInnovacionCrear peticion)
+    public async Task<CarInnovacion> CrearAsync(CarInnovacionCrear peticion)
     {
-        await _repositorio.CrearAsync(new CarInnovacion
-        {
-            Id = peticion.Id!.Value,
-            Nombre = peticion.Nombre!,
+        var entidad = new CarInnovacion
+        {            Nombre = peticion.Nombre!,
             Descripcion = peticion.Descripcion!,
             Tipo = peticion.Tipo!
-        });
+        };
+        entidad.Id = await _repositorio.CrearAsync(entidad);
+        return entidad;
     }
 
     public async Task<int> ReemplazarAsync(int id, CarInnovacionReemplazo peticion)

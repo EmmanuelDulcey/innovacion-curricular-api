@@ -1,3 +1,7 @@
+/* ========================================================================
+   QUÉ ES: presentación visual de la página genérica de catálogo.
+   PAPEL: mantiene legibles la tabla, los formularios y sus acciones.
+   ======================================================================== */
 .catalogo {
   padding: 1.25rem;
 }
@@ -115,6 +119,22 @@ tr:last-child td {
   background: #eaf2fb;
   color: #1e4a75;
   margin-right: 0.35rem;
+}
+
+/* Enlace al maestro-detalle del programa (mismo aspecto que los botones). */
+.btn-detalle {
+  display: inline-block;
+  background: #eef7ee;
+  color: #1c7a31;
+  margin-right: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.btn-detalle:hover {
+  background: #dcefdc;
 }
 
 .btn-eliminar {

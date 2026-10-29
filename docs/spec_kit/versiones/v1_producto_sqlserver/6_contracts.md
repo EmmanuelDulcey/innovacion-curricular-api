@@ -23,7 +23,7 @@ car_innovacion
 aliado
 ```
 
-Las seis primeras tablas utilizan `id` como llave primaria.
+Las seis primeras tablas utilizan `id` como llave primaria, generado automáticamente e incremental por SQL Server.
 
 La tabla `aliado` utiliza `nit` como llave primaria.
 
@@ -597,13 +597,9 @@ Para las tablas cuya llave es `id`, el formato será:
 
 Permite crear un nuevo registro.
 
-El identificador **no utiliza `IDENTITY`**, por lo que debe ser proporcionado por el cliente.
+Para las seis tablas con llave `id`, SQL Server genera el identificador automáticamente. El cliente no lo envía en el POST; la respuesta devuelve la fila guardada con el ID asignado.
 
-Para las seis tablas correspondientes se utiliza `id`.
-
-Para `aliado` se utiliza `nit`.
-
-El campo `activo` no necesita enviarse para crear el registro; la API debe crearlo inicialmente como activo.
+`aliado` conserva `nit` como llave natural y el usuario sí lo proporciona. El campo `activo` no se envía; el registro se crea inicialmente como activo.
 
 ---
 
@@ -618,7 +614,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 219,
   "gran_area": "Ingeniería",
   "area": "Ingeniería de Sistemas",
   "disciplina": "Desarrollo de Software"
@@ -642,7 +637,6 @@ HTTP/1.1 200 OK
 
 ```json
 {
-  "id": 219,
   "gran_area": "",
   "area": "Ingeniería de Sistemas"
 }
@@ -673,7 +667,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 7,
   "nombre": "Universidad Ejemplo",
   "tipo": "Pública",
   "ciudad": "Medellín"
@@ -700,7 +693,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
   "tipo": "Ley",
   "descripcion": "Descripción normativa",
   "fuente": "Ministerio de Educación"
@@ -727,7 +719,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
   "tipo": "Práctica",
   "nombre": "Aprendizaje basado en proyectos",
   "descripcion": "Descripción de la práctica"
@@ -754,7 +745,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
   "nombre": "Enfoque pedagógico",
   "descripcion": "Descripción del enfoque"
 }
@@ -780,7 +770,6 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
   "nombre": "Innovación pedagógica",
   "descripcion": "Descripción de la característica de innovación",
   "tipo": "Pedagógica"
@@ -1554,7 +1543,7 @@ Las peticiones de creación, reemplazo y actualización deben validar los tipos,
 ## 8.1 `area_conocimiento`
 | Campo | Crear | PUT | PATCH | Regla |
 |---|---|---|---|---|
-| `id` | ✓ | URL | URL | Entero positivo |
+| `id` | — (lo genera SQL Server) | URL | URL | Entero positivo |
 | `gran_area` | ✓ | ✓ | Opcional | Obligatorio, máximo 60 caracteres |
 | `area` | ✓ | ✓ | Opcional | Obligatorio, máximo 60 caracteres |
 | `disciplina` | ✓ | ✓ | Opcional | Obligatorio, máximo 60 caracteres |
@@ -1754,9 +1743,9 @@ corresponden al diagnóstico y documentación interactiva de la API.
 2. `area_conocimiento` inicia con 218 registros.
 3. `universidad` inicia con 6 registros.
 4. `aspecto_normativo`, `practica_estrategia`, `enfoque`, `car_innovacion` y `aliado` inician vacías.
-5. Las llaves primarias son enteros positivos y no utilizan `IDENTITY`.
-6. El cliente proporciona `id` al crear registros de las seis tablas correspondientes.
-7. El cliente proporciona `nit` al crear un `aliado`.
+5. Los IDs internos son enteros positivos y SQL Server los genera automáticamente, de forma incremental.
+6. Las claves naturales (como el NIT del aliado) se proporcionan porque representan datos propios del dominio; no se sustituyen por IDs internos.
+7. El documento de una persona se conserva como dato separado y nunca se usa como PK.
 8. Los registros nuevos comienzan con `activo = 1`.
 9. Las consultas normales solo muestran registros activos.
 10. `DELETE` realiza borrado lógico mediante `activo = 0`.

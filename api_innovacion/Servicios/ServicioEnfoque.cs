@@ -32,14 +32,14 @@ public class ServicioEnfoque : IServicioEnfoque
         return registro;
     }
 
-    public async Task CrearAsync(EnfoqueCrear peticion)
+    public async Task<Enfoque> CrearAsync(EnfoqueCrear peticion)
     {
-        await _repositorio.CrearAsync(new Enfoque
-        {
-            Id = peticion.Id!.Value,
-            Nombre = peticion.Nombre!,
+        var entidad = new Enfoque
+        {            Nombre = peticion.Nombre!,
             Descripcion = peticion.Descripcion!
-        });
+        };
+        entidad.Id = await _repositorio.CrearAsync(entidad);
+        return entidad;
     }
 
     public async Task<int> ReemplazarAsync(int id, EnfoqueReemplazo peticion)

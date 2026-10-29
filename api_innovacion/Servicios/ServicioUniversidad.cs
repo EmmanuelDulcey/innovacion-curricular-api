@@ -34,15 +34,15 @@ public class ServicioUniversidad : IServicioUniversidad
         return registro;
     }
 
-    public async Task CrearAsync(UniversidadCrear peticion)
+    public async Task<Universidad> CrearAsync(UniversidadCrear peticion)
     {
-        await _repositorio.CrearAsync(new Universidad
-        {
-            Id = peticion.Id!.Value,
-            Nombre = peticion.Nombre!,
+        var entidad = new Universidad
+        {            Nombre = peticion.Nombre!,
             Tipo = peticion.Tipo!,
             Ciudad = peticion.Ciudad!
-        });
+        };
+        entidad.Id = await _repositorio.CrearAsync(entidad);
+        return entidad;
     }
 
     public async Task<int> ReemplazarAsync(int id, UniversidadReemplazo peticion)

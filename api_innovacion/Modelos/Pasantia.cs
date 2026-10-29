@@ -8,7 +8,7 @@ namespace ApiInnovacion.Modelos;
 /// </summary>
 public class Pasantia
 {
-    public required int Id { get; set; }
+    public int Id { get; set; }
     public required string Nombre { get; set; }
     public required string Pais { get; set; }
     public required string Empresa { get; set; }

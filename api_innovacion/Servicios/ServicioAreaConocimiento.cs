@@ -34,15 +34,15 @@ public class ServicioAreaConocimiento : IServicioAreaConocimiento
         return registro;
     }
 
-    public async Task CrearAsync(AreaConocimientoCrear peticion)
+    public async Task<AreaConocimiento> CrearAsync(AreaConocimientoCrear peticion)
     {
-        await _repositorio.CrearAsync(new AreaConocimiento
-        {
-            Id = peticion.Id!.Value,
-            GranArea = peticion.GranArea!,
+        var entidad = new AreaConocimiento
+        {            GranArea = peticion.GranArea!,
             Area = peticion.Area!,
             Disciplina = peticion.Disciplina!
-        });
+        };
+        entidad.Id = await _repositorio.CrearAsync(entidad);
+        return entidad;
     }
 
     public async Task<int> ReemplazarAsync(int id, AreaConocimientoReemplazo peticion)

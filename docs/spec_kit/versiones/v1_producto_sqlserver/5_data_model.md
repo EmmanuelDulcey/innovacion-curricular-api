@@ -38,14 +38,16 @@ lógica de negocio, incluido el borrado lógico, vive en la API.
 
 ## 2. Lo único que esta versión puede nombrar: las 7 tablas sin llave foránea
 
-Todas usan una llave primaria entera **sin `IDENTITY`**: el valor lo
-asigna quien hace el `POST`.
+Las seis tablas con PK `id` usan secuencias de SQL Server para generar valores
+incrementales; el cliente omite el `id` al crear. La llave natural `aliado.nit`
+se conserva porque identifica a la organización. La migración inicia cada
+secuencia después del mayor ID existente y no reconstruye las tablas.
 
 ### `area_conocimiento` — 218 registros base
 
 | Columna | Tipo (SQL Server) | Regla |
 |---|---|---|
-| `id` | `INT` | **PK**, entero positivo, asignado por el cliente |
+| `id` | `INT` | **PK**, entero positivo, asignado automáticamente por SQL Server |
 | `gran_area` | `VARCHAR(60)` | No nulo, no vacío, máx. 60 |
 | `area` | `VARCHAR(60)` | No nulo, no vacío, máx. 60 |
 | `disciplina` | `VARCHAR(60)` | No nulo, no vacío, máx. 60 |
@@ -55,7 +57,7 @@ asigna quien hace el `POST`.
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK**, entero positivo |
+| `id` | `INT` | **PK**, entero positivo, generado incrementalmente por SQL Server |
 | `nombre` | `VARCHAR(60)` | No nulo, no vacío, máx. 60 |
 | `tipo` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `ciudad` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
@@ -65,7 +67,7 @@ asigna quien hace el `POST`.
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK**, entero positivo |
+| `id` | `INT` | **PK**, entero positivo, generado incrementalmente por SQL Server |
 | `tipo` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `descripcion` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `fuente` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
@@ -75,7 +77,7 @@ asigna quien hace el `POST`.
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK**, entero positivo |
+| `id` | `INT` | **PK**, entero positivo, generado incrementalmente por SQL Server |
 | `tipo` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `nombre` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `descripcion` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
@@ -85,7 +87,7 @@ asigna quien hace el `POST`.
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK**, entero positivo |
+| `id` | `INT` | **PK**, entero positivo, generado incrementalmente por SQL Server |
 | `nombre` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `descripcion` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `activo` | `BIT` | idem |
@@ -94,7 +96,7 @@ asigna quien hace el `POST`.
 
 | Columna | Tipo | Regla |
 |---|---|---|
-| `id` | `INT` | **PK**, entero positivo |
+| `id` | `INT` | **PK**, entero positivo, generado incrementalmente por SQL Server |
 | `nombre` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |
 | `descripcion` | `VARCHAR(MAX)` | No nulo, no vacío |
 | `tipo` | `VARCHAR(45)` | No nulo, no vacío, máx. 45 |

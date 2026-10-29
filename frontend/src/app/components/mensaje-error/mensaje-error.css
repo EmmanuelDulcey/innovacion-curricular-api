@@ -1,3 +1,5 @@
+/* QUÉ ES: estilos del componente de error reutilizable. */
+/* PAPEL: diferencia los mensajes de error sin cambiar el flujo del formulario. */
 .mensaje-error {
   background: #fff3f3;
   border: 1px solid #d9848480;

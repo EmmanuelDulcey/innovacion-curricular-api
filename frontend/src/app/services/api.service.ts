@@ -96,6 +96,21 @@ export class ApiService {
       .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
   }
 
+  // PUT /api/{relacion}/{pk1}/{pk2}: reemplaza los atributos editables sin
+  // permitir que cambie la pareja compuesta que identifica la fila.
+  reemplazarRelacion<T>(tabla: string, pk1: number | string, pk2: number | string, body: Partial<T>): Observable<RespuestaFilas> {
+    return this.http
+      .put<RespuestaFilas>(`${this.apiUrl}/api/${tabla}/${pk1}/${pk2}`, body)
+      .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
+  }
+
+  // PATCH /api/{relacion}/{pk1}/{pk2}: actualiza solo los atributos enviados.
+  actualizarRelacion<T>(tabla: string, pk1: number | string, pk2: number | string, patch: Partial<T>): Observable<RespuestaFilas> {
+    return this.http
+      .patch<RespuestaFilas>(`${this.apiUrl}/api/${tabla}/${pk1}/${pk2}`, patch)
+      .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
+  }
+
   // Traduce el JSON de error {estado, mensaje, detalle, errores} en ApiError tipado.
   private manejarError(error: HttpErrorResponse): Observable<never> {
     if (error.status === 0) {

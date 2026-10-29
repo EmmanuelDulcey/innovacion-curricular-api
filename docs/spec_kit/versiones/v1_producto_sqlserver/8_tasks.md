@@ -19,7 +19,7 @@
 
 ## Fase 2 — Las peticiones por verbo y la excepción
 
-* `Peticiones/`: tres clases por cada entidad: `<Tabla>Crear.cs` (todo obligatorio, incluida la PK), `<Tabla>Reemplazo.cs` (todo obligatorio sin la PK), y `<Tabla>Actualizar.cs` (todo opcional)[cite: 1].
+* `Peticiones/`: tres clases por cada entidad: `<Tabla>Crear.cs` (campos de negocio obligatorios; el `id` interno se genera en SQL Server), `<Tabla>Reemplazo.cs` (todo obligatorio sin la PK), y `<Tabla>Actualizar.cs` (todo opcional)[cite: 1]. `aliado.nit` sigue siendo su clave natural.
 * `Excepciones/NoEncontradoExcepcion.cs`: la excepción de negocio que el controlador traducirá a un código HTTP 404[cite: 1].
 * **Verificar:** `dotnet build` compila sin errores.
 

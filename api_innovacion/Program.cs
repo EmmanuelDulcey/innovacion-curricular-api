@@ -130,6 +130,67 @@ builder.Services.AddScoped<IRepositorioPremio>(
     _ => new RepositorioPremioSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioPremio, ServicioPremio>();
 
+// Issue #2 (v2) - programa, acreditacion, registro_calificado, activ_academica
+// y las puentes enfoque_rc y aa_rc (procedimientos almacenados).
+builder.Services.AddScoped<IRepositorioPrograma>(
+    _ => new RepositorioProgramaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioPrograma, ServicioPrograma>();
+
+builder.Services.AddScoped<IRepositorioAcreditacion>(
+    _ => new RepositorioAcreditacionSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAcreditacion, ServicioAcreditacion>();
+
+builder.Services.AddScoped<IRepositorioRegistroCalificado>(
+    _ => new RepositorioRegistroCalificadoSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioRegistroCalificado, ServicioRegistroCalificado>();
+
+builder.Services.AddScoped<IRepositorioActivAcademica>(
+    _ => new RepositorioActivAcademicaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioActivAcademica, ServicioActivAcademica>();
+
+builder.Services.AddScoped<IRepositorioEnfoqueRc>(
+    _ => new RepositorioEnfoqueRcSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioEnfoqueRc, ServicioEnfoqueRc>();
+
+builder.Services.AddScoped<IRepositorioAaRc>(
+    _ => new RepositorioAaRcSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAaRc, ServicioAaRc>();
+
+// Issue 3 (v2): relaciones de Felipe. Cada par conserva el ensamblaje de la v1.
+builder.Services.AddScoped<IRepositorioProgramaOpciones>(
+    _ => new RepositorioProgramaOpcionesSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaOpciones, ServicioProgramaOpciones>();
+
+// Catálogo local: su ID identifica la ficha del sistema, el documento identifica
+// a la persona y nunca ocupa el lugar de la llave primaria.
+builder.Services.AddScoped<IRepositorioDocente>(
+    _ => new RepositorioDocenteSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioDocente, ServicioDocente>();
+
+builder.Services.AddScoped<IRepositorioDocenteDepartamento>(
+    _ => new RepositorioDocenteDepartamentoSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioDocenteDepartamento, ServicioDocenteDepartamento>();
+
+builder.Services.AddScoped<IRepositorioAlianza>(
+    _ => new RepositorioAlianzaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAlianza, ServicioAlianza>();
+
+builder.Services.AddScoped<IRepositorioProgramaAc>(
+    _ => new RepositorioProgramaAcSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaAc, ServicioProgramaAc>();
+
+builder.Services.AddScoped<IRepositorioProgramaPe>(
+    _ => new RepositorioProgramaPeSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaPe, ServicioProgramaPe>();
+
+builder.Services.AddScoped<IRepositorioProgramaCi>(
+    _ => new RepositorioProgramaCiSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioProgramaCi, ServicioProgramaCi>();
+
+builder.Services.AddScoped<IRepositorioAnPrograma>(
+    _ => new RepositorioAnProgramaSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAnPrograma, ServicioAnPrograma>();
+
 var app = builder.Build();
 
 // -----------------------------------------------------------------------------

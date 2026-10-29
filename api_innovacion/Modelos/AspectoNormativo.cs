@@ -5,7 +5,7 @@ namespace ApiInnovacion.Modelos;
 /// </summary>
 public class AspectoNormativo
 {
-    public required int Id { get; set; }
+    public int Id { get; set; }
     public required string Tipo { get; set; }
     public required string Descripcion { get; set; }
     public required string Fuente { get; set; }

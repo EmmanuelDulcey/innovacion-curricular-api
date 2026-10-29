@@ -1,3 +1,5 @@
+<!-- QUÉ ES: plantilla accesible para los mensajes de error del formulario. -->
+<!-- PAPEL: agrupa el mensaje general y, cuando existen, los errores por campo. -->
 @if (error()) {
   <div class="mensaje-error">
     <p class="texto"><strong>{{ error()!.mensaje }}</strong></p>

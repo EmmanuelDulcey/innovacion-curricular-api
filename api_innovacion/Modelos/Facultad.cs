@@ -8,7 +8,7 @@ namespace ApiInnovacion.Modelos;
 /// </summary>
 public class Facultad
 {
-    public required int Id { get; set; }
+    public int Id { get; set; }
     public required string Nombre { get; set; }
     public required string Tipo { get; set; }
     public required DateTime FechaFun { get; set; }

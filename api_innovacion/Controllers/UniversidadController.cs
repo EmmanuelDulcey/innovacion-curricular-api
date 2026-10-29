@@ -77,11 +77,12 @@ public class UniversidadController : ControllerBase
     {
         try
         {
-            await _servicio.CrearAsync(peticion);
-            return Ok(new RespuestaExito
+            var creado = await _servicio.CrearAsync(peticion);
+            return Ok(new RespuestaCreacion<Universidad>
             {
                 Estado = StatusCodes.Status200OK,
-                Mensaje = "Registro creado exitosamente."
+                Mensaje = "Registro creado exitosamente.",
+                Datos = creado
             });
         }
         catch (Exception ex)

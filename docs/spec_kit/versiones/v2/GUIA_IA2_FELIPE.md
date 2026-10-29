@@ -1,11 +1,10 @@
 # Guía de IA — Versión 2 · Felipe
 
-> Su camino: **A · Chat web** (pegar el prompt, pegar los archivos de contexto,
-> revisar y copiar el resultado al repositorio). Si su equipo usa un IDE
-> agéntico, el mismo prompt sirve; solo cambia que el agente lee los archivos
-> directamente.
+> Su camino: **IDE agéntico con el checkout abierto en Rider**. El agente lee
+> el spec kit y el código directamente en la rama existente para que el cambio
+> quede en el proyecto que se compila y se usa.
 >
-> Rama: `rama-felipe-v2`
+> Rama de trabajo existente: `felipe-correa` (se conserva el checkout de Rider; no se crea una rama nueva ni se trabaja en `main`).
 
 ## 1. Lo que le toca
 
@@ -63,6 +62,38 @@ ENTREGA, en este orden y un archivo a la vez:
 Antes de escribir código, dime en una lista corta qué vas a hacer y qué decisiones dudosas ves. Si algo del spec es ambiguo, pregúntame; no lo inventes.
 ```
 
+### Prompt realmente usado en esta implementación
+
+El punto de partida fue el prompt de la sección 3 de esta guía, enviado por
+Felipe en la conversación del 15 de octubre de 2026. La instrucción final
+que fijó la prioridad fue: «Verifica la v1. Es la regla de negocio principal
+y todo debe seguir ese flujo. Con base en eso asegúrate que los documentos
+del spec kit de la v2 estén integrados correctamente... haz todo lo del issue».
+La instrucción final de ubicación fue «Escribe el código en la rama de
+Felipe-Correa». El alcance detallado es el Issue 3 publicado en GitHub como #15. Las
+correcciones de rama y de checkout están transcritas en la tabla de la sección 6.
+El código quedó en el checkout existente de Rider, en `felipe-correa`; la rama
+se avanzó por fast-forward para incorporar la base v2 y luego recibió estos
+cambios. No se creó otra rama, no se trabajó en `main`, no se hizo push ni se
+abrió el PR.
+
+**Decisiones verificadas contra la v1 y el contrato de la v2:**
+
+- Respuestas en castellano, como la v1 real: tabla/limite/total/datos y
+  estado/mensaje/detalle. El prompt plantilla pedía inglés; no se usa
+  una envoltura incompatible con el frontend existente.
+- Clases y carpetas siguen el proyecto real (Modelos, Peticiones,
+  Repositorios, Servicios, Controllers), con propiedades PascalCase y
+  serialización snake_case. No se crea una solución nueva.
+- `docente_departamento` y `alianza` tienen cinco procedimientos CRUD porque
+  guardan atributos editables; sus claves compuestas quedan fijas en la ruta.
+  Las cuatro puentes puras usan listar, consultar, asignar y retirar, sin editar.
+  Esta distinción corrige la regla demasiado amplia que el spec kit anterior
+  aplicaba a todas las relaciones compuestas.
+- El ID del docente pertenece a un catálogo local incremental; el documento
+  identifica a la persona por separado. Los formularios eligen docentes activos
+  por nombre y envían el ID interno.
+
 ## 4. Tropiezos que le tocan de cerca
 
 - **Tropiezo 9 (el suyo):** cuatro puentes, cuatro oportunidades de dejar un botón de editar. Ninguna lo lleva.
@@ -70,7 +101,7 @@ Antes de escribir código, dime en una lista corta qué vas a hacer y qué decis
 - **Tropiezo 2:** `alianza` usa el NIT como clave del aliado; compruebe que el tipo y el nombre de la propiedad coinciden con la columna.
 - **Prueba de la pareja:** asignar → repetir (409) → retirar, para cada puente.
 
-## 5. Cómo revisar lo que devuelve la IA (antes de copiarlo)
+## 5. Cómo revisar lo que devuelve la IA (antes del commit)
 
 - [ ] ¿Hay algún `SELECT`, `INSERT`, `UPDATE` o `DELETE` dentro de un archivo `.cs`? Si sí, **rechácelo**.
 - [ ] ¿Los listados tienen `WHERE activo = 1` (si la tabla tiene `activo`)?
@@ -86,9 +117,14 @@ Antes de escribir código, dime en una lista corta qué vas a hacer y qué decis
 
 | # | Qué pidió | Qué salió mal | Qué corrección lo arregló (prompt de corrección) |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
+| 1 | Seguir el comportamiento cerrado de la v1. | El prompt plantilla exigía envoltura y nombres ingleses, pero la v1 real y el frontend usan castellano. | «Verifica la v1. Es la regla de negocio principal y todo debe seguir ese flujo». Se conservaron los sobres y capas reales. |
+| 2 | Conservar el proyecto abierto en Rider. | El trabajo inicial estaba en una copia de trabajo separada y Rider no tenía esos cambios. | Felipe indicó escribir el código en Rider; se avanzó el checkout existente `felipe-correa` desde `b5b905b` hasta la base v2 y se aplicaron allí los cambios, sin crear otra rama. |
+| 3 | Trabajar en la rama propia existente. | Al inicio se propuso una rama secundaria en vez de continuar directamente sobre la rama del usuario. | «Escribe el código en la rama de Felipe-Correa». Se mantuvo `felipe-correa`; no se creó una rama nueva para esta entrega. |
+| 4 | Mostrar programas en los desplegables. | La rama actual no tiene `GET /api/programa`; el formulario quedaba sin opciones. | Se añadió `GET /api/opciones/programa`, de solo lectura, con programas activos y procedimiento almacenado. El frontend muestra claramente si falla la carga. |
+| 5 | Levantar y verificar la solución con Docker. | El contexto del frontend copiaba dependencias locales por encima de las instaladas en la imagen. | Se conserva `frontend/.dockerignore`. En este cierre: `dotnet build` (0 errores/advertencias), 96 pruebas de capas, Angular compilado, 46 respuestas HTTP CRUD esperadas en una BD temporal aislada y siete conflictos 409 por padres inexistentes. `npm ci` informa 9 vulnerabilidades (2 moderadas, 4 altas, 3 críticas); no se actualizaron dependencias fuera del alcance. |
+| 6 | Generar IDs automáticamente y no escribir códigos de docente. | La investigación inicial D6 decía que el docente era externo y no proponía un catálogo local. | Felipe aclaró que el docente debe poder crearse con ID interno automático y documento separado. Se actualizó D6, se añadió `docente` como catálogo auxiliar y se cambiaron los desplegables a nombres. |
+| 7 | Reemplazar los datos de prueba por ejemplos reales sin atribuir premios falsos. | Había aliados, normas, prácticas, facultad, pasantía y premio con nombres de prueba o genéricos. | Se eligieron nombres y datos institucionales documentados; el premio se vincula a Ingeniería Química sólo porque la Resolución Académica 3884 de la UdeA identifica ese programa como ganador. |
+| 8 | Completar el CRUD indicado por el Issue 3 y aclarar si las alianzas se editan. | Varias secciones del spec kit agrupaban las seis relaciones de Felipe como “sin edición”, aunque `docente_departamento` y `alianza` guardan datos propios y el issue pide CRUD; esa regla confundía ambas clases de relación. | Se delimitó el alcance: ambas relaciones con atributos tienen cinco procedimientos CRUD y PUT/PATCH por pareja inmutable; `programa_ac`, `programa_pe`, `programa_ci` y `an_programa` son puentes puros y sólo permiten asignar/retirar. Se corrigieron los contratos, la guía y el frontend para reflejarlo. |
 
 ## 7. Preguntas de sustentación para ensayar
 

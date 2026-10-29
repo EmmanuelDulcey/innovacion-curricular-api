@@ -16,8 +16,9 @@
 - [ ] `GET http://localhost:8036/` responde y trae `"version": "v2"`.
 
 ### 2. CRUD completo por procedimientos
-- [ ] Cada una de las **tablas de la v2** hace Crear / Listar / Consultar /
-  Reemplazar / Actualizar / Eliminar **a través de procedimientos almacenados**.
+- [ ] Las tablas con PK simple hacen Crear / Listar / Consultar / Reemplazar /
+  Actualizar / Eliminar; las de PK compuesta hacen Listar / Consultar pareja /
+  Asignar / Retirar, todo **a través de procedimientos almacenados**.
 - [ ] **Cero SQL** en el C# (los repositorios sólo usan
   `CommandType.StoredProcedure`).
 - [ ] El `POST` **devuelve la fila guardada** (`datos`).
@@ -38,16 +39,18 @@
   con `activo = 0`.
 - [ ] Un **segundo** `DELETE` (o de un inexistente) → **404**.
 
-### 6. Tablas puente sin edición
-- [ ] Las puentes **no** tienen botón ni verbo Editar; sólo **Asignar** y
-  **Retirar**.
+### 6. Relaciones compuestas: claves estables y acciones según sus datos
+- [ ] En `docente_departamento` y `alianza`, Editar permite cambiar atributos,
+  conserva las claves compuestas y ofrece PUT/PATCH por la pareja original.
+- [ ] Las cuatro puentes puras de Felipe (`programa_ac`, `programa_pe`,
+  `programa_ci`, `an_programa`) no tienen Editar; sólo **Asignar** y **Retirar**.
 
 ### 7. FK inexistente → 409
 - [ ] `POST` con una FK que no existe → **409** (no 500), con mensaje en
   castellano.
 
 ### 8. Pareja duplicada en puente → 409
-- [ ] Asignar una pareja ya existente → **409**.
+- [ ] Asignar una pareja ya existente en una relación compuesta → **409**.
 
 ### 9. El disparador se ve desde la interfaz
 - [ ] Al **asignar** una acreditación sube `programa.num_acreditaciones`.
@@ -72,7 +75,7 @@
   ([2_spec.md](2_spec.md) §3.1).
 - [ ] Las 15 tablas tienen `activo`; los listados filtran `activo = 1`.
 - [ ] `num_acreditaciones` **sólo** lo escribe el disparador (la API nunca).
-- [ ] Las PK **no** son `IDENTITY`: la clave la envía el cliente.
+- [x] Los IDs internos se generan en SQL Server (secuencia por defecto en v1 y `IDENTITY` en el catálogo local docente); el documento de identidad y las claves naturales no se usan como PK.
 - [ ] Ajuste a la constitución aplicado (Art. 2 procs / Art. 3 409 / Art. 8
   envoltura) ([2_spec.md](2_spec.md) §4).
 
@@ -86,8 +89,10 @@
 - [ ] PUT → **200** / **404** / **409** / **422**.
 - [ ] PATCH → **200** / **400** (sin campos) / **404** / **409**.
 - [ ] DELETE → **200** / **404** / **409** (padre con hijos).
-- [ ] POST puente → **200** / **409** / **422**.
-- [ ] DELETE puente → **200** / **404**.
+- [ ] POST relación compuesta (asignar) → **200** / **409** / **422**.
+- [ ] DELETE relación compuesta (retirar) → **200** / **404**.
+- [ ] PUT/PATCH por pareja para `docente_departamento` y `alianza` → **200**;
+  PATCH vacío/fechas incoherentes → **400**; pareja inexistente → **404**.
 
 ---
 

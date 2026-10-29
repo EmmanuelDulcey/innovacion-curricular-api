@@ -6,7 +6,7 @@ Frontend) y ejecutar un *smoke test*, haciendo énfasis en **lo nuevo**: los
 
 La v2 usa el mismo entorno que la v1: C# / ASP.NET Core, SQL Server, Dapper,
 Docker Compose y Swagger. Lo nuevo es que el SQL vive en **procedimientos
-almacenados** y que hay **15 tablas con clave foránea**.
+almacenados**, **15 tablas con clave foránea** y un catálogo local de docentes.
 
 > **Antes de empezar:** la v1 debe estar cerrada con tag `v1` y sus datos base
 > cargados (la v2 necesita catálogos en las 7 tablas sin FK para los
@@ -35,11 +35,16 @@ docker compose up -d --build
 
 El inicializador corre, **en orden e idempotentemente**:
 
-1. `db/innovacion_curricular.ss.sql` (25 tablas, provisto — intacto)
+1. `db/innovacion_curricular.ss.sql` (26 tablas en una instalación nueva; una
+   base anterior con 25 tablas se migra sin borrar sus datos)
 2. `db/01_activar_borrado_logico.sql` (v1: `activo` en 7 tablas)
 3. `db/02_datos_iniciales.sql` (v1: catálogos base)
 4. **`db/03_activar_borrado_logico_v2.sql`** (`activo` en las 15 tablas + `num_acreditaciones`)
 5. **`db/04_procedimientos_v2_*.sql`** (procedimientos + disparador)
+6. **`db/05_identificadores_incrementales.sql`** (IDs internos automáticos)
+7. **`db/06_datos_demostracion.sql`** (normas, prácticas, aliado, facultad,
+   estancia y premio de ejemplo documentados)
+8. **`db/07_docente.sql`** (catálogo docente para una base anterior)
 
 ## 3. Verificar los contenedores
 
@@ -81,7 +86,6 @@ fila, el nombre de la universidad (`universidad_nombre`). Una tabla vacía → 2
 curl -X POST http://localhost:8036/api/facultad \
   -H "Content-Type: application/json" \
   -d '{
-    "id": 100,
     "nombre": "Facultad de Prueba",
     "tipo": "Pública",
     "fecha_fun": "1990-01-15",
@@ -92,21 +96,23 @@ curl -X POST http://localhost:8036/api/facultad \
 Respuesta esperada: 200 con `{estado, mensaje, datos:{…}}` (la fila recién
 creada).
 
+La respuesta trae el ID generado en `datos.id`; úsalo en las llamadas siguientes.
+
 ### 6.2 Consultar / PUT / PATCH
 
 ```bash
-curl -i http://localhost:8036/api/facultad/100
-curl -X PUT http://localhost:8036/api/facultad/100 \
+curl -i http://localhost:8036/api/facultad/ID_CREADO
+curl -X PUT http://localhost:8036/api/facultad/ID_CREADO \
   -H "Content-Type: application/json" \
   -d '{"nombre":"Facultad de Prueba 2","tipo":"Privada","fecha_fun":"1990-01-15","universidad":1}'
-curl -X PATCH http://localhost:8036/api/facultad/100 \
+curl -X PATCH http://localhost:8036/api/facultad/ID_CREADO \
   -H "Content-Type: application/json" -d '{"tipo":"Pública"}'
 ```
 
 ### 6.3 Eliminación lógica (DELETE)
 
 ```bash
-curl -X DELETE http://localhost:8036/api/facultad/100
+curl -X DELETE http://localhost:8036/api/facultad/ID_CREADO
 ```
 
 200 con `filasEliminadas: 1`. Un **segundo** `DELETE` → **404**.
@@ -118,7 +124,7 @@ curl -X DELETE http://localhost:8036/api/facultad/100
 ```bash
 curl -X POST http://localhost:8036/api/facultad \
   -H "Content-Type: application/json" \
-  -d '{"id":101,"nombre":"X","tipo":"Pública","fecha_fun":"1990-01-15","universidad":99999}'
+  -d '{"nombre":"X","tipo":"Pública","fecha_fun":"1990-01-15","universidad":99999}'
 ```
 
 ```json
@@ -185,7 +191,7 @@ El paso 5 es el que prueba que el disparador **no es sordo al `UPDATE`**
 
 ```bash
 curl -X POST http://localhost:8036/api/facultad -H "Content-Type: application/json" \
-  -d '{"id":102,"nombre":"","tipo":"Pública","fecha_fun":"1990-01-15","universidad":1}'   # 422
+  -d '{"nombre":"","tipo":"Pública","fecha_fun":"1990-01-15","universidad":1}'   # 422
 curl -i http://localhost:8036/api/facultad/999999    # 404
 ```
 
@@ -200,7 +206,10 @@ curl -i http://localhost:8036/api/facultad/999999    # 404
   aplique (`activ_academica.disenio`).
 - **Maestro-detalle de `programa`**: abrir un programa y agregar su detalle sin
   salir de la pantalla.
-- **Tablas puente**: sólo **asignar** y **retirar** (sin botón editar).
+- **Tablas puente puras de Felipe** (`programa_ac`, `programa_pe`, `programa_ci`,
+  `an_programa`): sólo **asignar** y **retirar**. En
+  `docente_departamento` y `alianza`, editar cambia sus atributos y conserva
+  inmutable la pareja de claves.
 
 ## 12. Detener / reiniciar
 
@@ -231,7 +240,8 @@ docker compose up -d --build # reconstruye desde cero
 - [ ] **FK inexistente → 409.**
 - [ ] **Pareja duplicada en puente → 409.**
 - [ ] **Padre con hijos activos → 409.**
-- [ ] Asignar / retirar en una tabla puente (sin editar).
+- [ ] Asignar / retirar en una tabla puente pura; editar los atributos de
+  alianza/docente-programa sin cambiar las claves de la relación.
 - [ ] **El disparador cambia `num_acreditaciones` al asignar y al retirar.**
 - [ ] Body inválido → 422; recurso inexistente → 404.
 - [ ] La regresión de la v1 sigue en verde ([9_checklist.md](9_checklist.md)).

@@ -73,8 +73,13 @@ public class CarInnovacionController : ControllerBase
     {
         try
         {
-            await _servicio.CrearAsync(peticion);
-            return Ok(new RespuestaExito { Estado = 200, Mensaje = "Registro creado exitosamente." });
+            var creado = await _servicio.CrearAsync(peticion);
+            return Ok(new RespuestaCreacion<CarInnovacion>
+            {
+                Estado = StatusCodes.Status200OK,
+                Mensaje = "Registro creado exitosamente.",
+                Datos = creado
+            });
         }
         catch (Exception ex) { return TraducirError(ex, "Error al crear el registro."); }
     }

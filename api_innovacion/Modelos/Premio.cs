@@ -8,7 +8,7 @@ namespace ApiInnovacion.Modelos;
 /// </summary>
 public class Premio
 {
-    public required int Id { get; set; }
+    public int Id { get; set; }
     public required string Nombre { get; set; }
     public required string Descripcion { get; set; }
     public required DateTime Fecha { get; set; }

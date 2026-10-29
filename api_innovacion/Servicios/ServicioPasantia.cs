@@ -39,8 +39,7 @@ public class ServicioPasantia : IServicioPasantia
     {
         var entidad = new Pasantia
         {
-            Id = peticion.Id!.Value,
-            Nombre = peticion.Nombre!,
+                        Nombre = peticion.Nombre!,
             Pais = peticion.Pais!,
             Empresa = peticion.Empresa!,
             Descripcion = peticion.Descripcion!,
@@ -53,7 +52,7 @@ public class ServicioPasantia : IServicioPasantia
         }
         catch (SqlException ex)
         {
-            throw TraducirSqlException(ex, peticion.Id!.Value);
+            throw TraducirSqlException(ex, null);
         }
     }
 
@@ -118,12 +117,12 @@ public class ServicioPasantia : IServicioPasantia
         return filas;
     }
 
-    private static ConflictoExcepcion TraducirSqlException(SqlException ex, int id)
+    private static ConflictoExcepcion TraducirSqlException(SqlException ex, int? id)
     {
         return ex.Number switch
         {
             547 => new ConflictoExcepcion("El programa indicado no existe o está inactivo."),
-            2627 or 2601 => new ConflictoExcepcion($"Ya existe un registro con esa clave ({id})."),
+            2627 or 2601 => new ConflictoExcepcion(id is null ? "Ya existe un registro con esa información." : "Ya existe un registro con esa clave (" + id.Value + ")."),
             _ => new ConflictoExcepcion(ex.Message)
         };
     }

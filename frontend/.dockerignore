@@ -1,0 +1,5 @@
+# Evita copiar dependencias y artefactos locales al contexto de Docker.
+node_modules/
+dist/
+.angular/
+.npm/

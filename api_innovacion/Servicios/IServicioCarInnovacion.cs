@@ -12,7 +12,7 @@ public interface IServicioCarInnovacion
 {
     Task<List<CarInnovacion>> ObtenerTodosAsync(int limite);
     Task<CarInnovacion> ObtenerPorIdAsync(int id);
-    Task CrearAsync(CarInnovacionCrear peticion);
+    Task<CarInnovacion> CrearAsync(CarInnovacionCrear peticion);
     Task<int> ReemplazarAsync(int id, CarInnovacionReemplazo peticion);
     Task<int> ActualizarAsync(int id, CarInnovacionActualizar peticion);
     Task<int> EliminarAsync(int id);

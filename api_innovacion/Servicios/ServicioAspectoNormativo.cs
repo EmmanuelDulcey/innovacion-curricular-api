@@ -28,15 +28,15 @@ public class ServicioAspectoNormativo : IServicioAspectoNormativo
         return registro;
     }
 
-    public async Task CrearAsync(AspectoNormativoCrear peticion)
+    public async Task<AspectoNormativo> CrearAsync(AspectoNormativoCrear peticion)
     {
-        await _repositorio.CrearAsync(new AspectoNormativo
-        {
-            Id = peticion.Id!.Value,
-            Tipo = peticion.Tipo!,
+        var entidad = new AspectoNormativo
+        {            Tipo = peticion.Tipo!,
             Descripcion = peticion.Descripcion!,
             Fuente = peticion.Fuente!
-        });
+        };
+        entidad.Id = await _repositorio.CrearAsync(entidad);
+        return entidad;
     }
 
     public async Task<int> ReemplazarAsync(int id, AspectoNormativoReemplazo peticion)

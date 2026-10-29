@@ -1,4 +1,5 @@
 using ApiInnovacion.Excepciones;
+using ApiInnovacion.Modelos;
 using ApiInnovacion.Peticiones;
 using ApiInnovacion.Respuestas;
 using ApiInnovacion.Servicios;
@@ -70,11 +71,12 @@ public class EnfoqueController : ControllerBase
     {
         try
         {
-            await _servicio.CrearAsync(peticion);
-            return Ok(new RespuestaExito
+            var creado = await _servicio.CrearAsync(peticion);
+            return Ok(new RespuestaCreacion<Enfoque>
             {
                 Estado = StatusCodes.Status200OK,
-                Mensaje = "Registro creado exitosamente."
+                Mensaje = "Registro creado exitosamente.",
+                Datos = creado
             });
         }
         catch (Exception ex)
