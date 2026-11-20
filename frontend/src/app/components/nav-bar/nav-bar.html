@@ -1,6 +1,5 @@
 <!-- Botón de hamburguesa: solo se ve en pantallas angostas (el CSS lo oculta
-     en escritorio, donde el menú está siempre a la vista). Sirve para abrir Y
-     cerrar: su icono cambia según el estado. -->
+     en escritorio, donde el menú está siempre a la vista). -->
 <button
   type="button"
   class="btn-menu"
@@ -8,28 +7,72 @@
   aria-label="Abrir o cerrar el menú"
   (click)="alternar()"
 >
-  {{ abierto() ? '✕' : '☰' }}
+  <app-icono [nombre]="abierto() ? 'x' : 'menu'" [tamano]="22" />
 </button>
 
 <nav class="nav-bar" [class.abierto]="abierto()">
-  <span class="marca">Innovación Curricular</span>
+  <!-- Marca: cuadrado con iniciales, nombre del módulo y área de gestión -->
+  <div class="marca">
+    <span class="marca-logo" aria-hidden="true">IC</span>
+    <div class="marca-texto">
+      <strong>Innovación Curricular</strong>
+      <span>Gestión Académica</span>
+    </div>
+  </div>
 
-  <!-- Todas las opciones en UNA sola columna: Dashboard primero y luego una
-       fila por tabla. La lista sale de TABLAS (nombreLegible la traduce); no
-       hay opciones escritas a mano ni agrupaciones. Al navegar se cierra el
-       menú en el celular. -->
-  <div class="opciones">
-    <a
-      routerLink="/"
-      routerLinkActive="activo"
-      [routerLinkActiveOptions]="{ exact: true }"
-      (click)="cerrar()"
-      >Dashboard</a
-    >
-    @for (tabla of tablas; track tabla) {
-      <a [routerLink]="['/tablas', tabla]" routerLinkActive="activo" (click)="cerrar()">{{
-        nombreLegible(tabla)
-      }}</a>
+  <!-- Acceso directo al dashboard: píldora activa en --color-acento -->
+  <a
+    class="item-dashboard"
+    routerLink="/"
+    routerLinkActive="activo"
+    [routerLinkActiveOptions]="{ exact: true }"
+    (click)="cerrar()"
+  >
+    <app-icono nombre="grid" [tamano]="18" />
+    <span>Dashboard General</span>
+  </a>
+
+  <!-- Grupos de catálogos: título en mayúsculas con chevron y un punto de
+       color por grupo (azul, cian o verde según la sección). -->
+  <div class="grupos">
+    @for (grupo of grupos; track grupo.id) {
+      <div class="grupo">
+        <button
+          type="button"
+          class="grupo-titulo"
+          [class.cerrado]="!grupoAbierto(grupo.id)"
+          [attr.aria-expanded]="grupoAbierto(grupo.id)"
+          (click)="alternarGrupo(grupo.id)"
+        >
+          <span>{{ grupo.titulo }}</span>
+          <app-icono nombre="chevron-down" [tamano]="16" />
+        </button>
+
+        @if (grupoAbierto(grupo.id)) {
+          <div class="opciones">
+            @for (tabla of grupo.tablas; track tabla) {
+              <a
+                [routerLink]="['/tablas', tabla]"
+                routerLinkActive="activo"
+                (click)="cerrar()"
+              >
+                <span [class]="'punto punto-' + grupo.punto" aria-hidden="true"></span>
+                <span class="opcion-nombre">{{ nombreLegible(tabla) }}</span>
+              </a>
+            }
+          </div>
+        }
+      </div>
     }
   </div>
+
+  <!-- Pie fijo del menú: estado real de conexión (lo marca el dashboard) y la
+       versión de la entrega. -->
+  <footer class="pie">
+    <span class="estado-servidor">
+      <span class="punto-estado" [class.desconectado]="estado.sinConexion()" aria-hidden="true"></span>
+      <span>{{ estado.sinConexion() ? 'Sin conexión con la API' : 'Servidor conectado' }}</span>
+    </span>
+    <span class="version">{{ version }}</span>
+  </footer>
 </nav>

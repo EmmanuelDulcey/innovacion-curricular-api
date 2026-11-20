@@ -1,57 +1,583 @@
+/* =============================================================================
+   Dashboard: tarjeta resumen, secciones por franjas y cuadrícula de tarjetas
+   con una destacada por sección. Solo variables de styles.css.
+   ============================================================================= */
 .dashboard {
-  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
-.encabezado h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.4rem;
+/* ---------- Tarjeta resumen --------------------------------------------- */
+.resumen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 28px 32px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-tarjeta);
 }
 
-.encabezado p {
-  margin: 0 0 1rem;
-  color: #5a6b7c;
+.resumen-texto {
+  max-width: 46ch;
 }
 
-.estado-carga {
-  color: #5a6b7c;
+.resumen-texto h1 {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
 }
 
-.cuadricula {
+.resumen-texto p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--color-texto-secundario);
+}
+
+/* Indicadores separados por líneas verticales finas */
+.resumen-indicadores {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 28px;
+}
+
+.indicador:first-child {
+  padding-left: 0;
+}
+
+.indicador + .indicador {
+  border-left: 1px solid var(--color-borde);
+}
+
+/* Etiqueta en mayúsculas pequeñas grises */
+.indicador-etiqueta {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-texto-secundario);
+}
+
+.indicador-valor {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-primario);
+}
+
+.indicador-valor small {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-texto-secundario);
+}
+
+/* El total de registros va en el azul acento */
+.indicador-valor-acento {
+  color: var(--color-acento);
+}
+
+/* Última sincronización: punto verde + hora */
+.indicador-valor-sync {
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.punto-conectado {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-exito);
+  flex: 0 0 auto;
+}
+
+/* ---------- Secciones ---------------------------------------------------- */
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: aparecer 0.35s ease backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Franja blanca con borde izquierdo grueso en el color primario */
+.seccion-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-left: 4px solid var(--color-primario);
+  border-radius: 12px;
+}
+
+.seccion-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--color-primario-suave);
+  color: var(--color-primario);
+  flex: 0 0 auto;
+}
+
+.seccion-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Título en MAYÚSCULAS, como pide el diseño */
+.seccion-texto h2 {
+  margin: 0 0 2px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-primario);
+}
+
+.seccion-texto p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--color-texto-secundario);
+}
+
+/* Chips calculados: catálogos (con borde azul) y registros (gris) */
+.seccion-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip-seccion {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: var(--radio-chip);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip-catalogo {
+  border: 1px solid var(--color-acento);
+  color: var(--color-acento);
+  background: var(--color-superficie);
+}
+
+.chip-registros {
+  background: var(--color-gris-suave);
+  color: var(--color-texto-secundario);
+}
+
+/* ---------- Cuadrícula de tarjetas --------------------------------------- */
+.grid-tarjetas {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
 }
 
+/* Tarjeta normal: blanca, borde fino, radio 14 */
 .tarjeta {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.25rem;
-  border: 1px solid #d4dce4;
-  border-radius: 10px;
-  background: #fff;
-  text-decoration: none;
+  gap: 12px;
+  min-height: 176px;
+  padding: 20px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-tarjeta);
   color: inherit;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  animation: aparecer 0.35s ease backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 
+/* Hover: se levanta 2px, sombra suave y borde acento */
 .tarjeta:hover {
-  box-shadow: 0 6px 18px rgba(15, 42, 67, 0.15);
   transform: translateY(-2px);
+  box-shadow: var(--sombra-tarjeta);
+  border-color: var(--color-acento);
 }
 
-.nombre {
+.tarjeta-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Categoría pequeña en gris */
+.tarjeta-categoria {
+  font-size: 0.7rem;
   font-weight: 600;
-  color: #0f2a43;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-texto-secundario);
 }
 
-.total {
-  font-size: 2rem;
+/* Ícono en un cuadrado suave */
+.tarjeta-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-acento-suave);
+  color: var(--color-acento);
+  flex: 0 0 auto;
+}
+
+.tarjeta-nombre {
+  margin: 0;
+  font-size: 1rem;
   font-weight: 700;
-  color: #2d6a9f;
+  line-height: 1.3;
+  color: var(--color-texto);
 }
 
-.sin-api {
+.tarjeta-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* Número grande en el color primario */
+.tarjeta-numero {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-primario);
+}
+
+/* Chip verde "Activo" / gris "Sin registros" */
+.chip-estado {
+  padding: 5px 10px;
+  border-radius: var(--radio-chip);
+  background: var(--color-exito-suave);
+  color: var(--color-exito);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip-estado.sin-registros {
+  background: var(--color-gris-suave);
+  color: var(--color-texto-secundario);
+}
+
+/* ---------- Tarjeta destacada ------------------------------------------- */
+.tarjeta-principal {
+  grid-column: span 2;
+  grid-row: span 2;
+  padding: 24px;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--color-menu), var(--color-primario));
+  color: var(--color-sobre-primario);
+}
+
+.tarjeta-principal:hover {
+  border-color: var(--color-acento);
+}
+
+.principal-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Chip translúcido "CATÁLOGO PRINCIPAL" */
+.principal-chip {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--color-sobre-primario-suave);
+  color: var(--color-sobre-primario);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+/* Ícono en cuadrado translúcido */
+.principal-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--color-sobre-primario-suave);
+  color: var(--color-sobre-primario);
+  flex: 0 0 auto;
+}
+
+.principal-nombre {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-sobre-primario);
+}
+
+/* Descripción de máximo dos líneas */
+.principal-descripcion {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-sobre-primario);
+  opacity: 0.82;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Línea divisoria antes del número */
+.principal-divisor {
+  display: block;
+  height: 1px;
+  background: var(--color-sobre-primario-borde);
+  margin: 4px 0;
+}
+
+.principal-pie {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+
+.principal-numero {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-sobre-primario);
+}
+
+.principal-etiqueta {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Los estados de error mantienen la legibilidad sobre el fondo oscuro */
+.tarjeta-principal .sin-api {
+  color: var(--color-sobre-primario);
+  opacity: 0.75;
+}
+
+/* Botón "Administrar >" en --color-acento */
+.principal-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--color-acento);
+  color: var(--color-sobre-primario);
   font-size: 0.85rem;
-  color: #a33;
+  font-weight: 600;
+}
+
+/* ---------- Estados y esqueletos ---------------------------------------- */
+/* "API no disponible" / "Error al cargar": texto gris, discreto. */
+.sin-api {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-texto-secundario);
+}
+
+.vacio {
+  padding: 24px 0;
+  color: var(--color-texto-secundario);
+}
+
+.esqueletos {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.esqueleto-seccion {
+  padding: 24px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-tarjeta);
+}
+
+.esqueleto-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.esqueleto-cuadro {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+
+.esqueleto-titulo {
+  width: 280px;
+  max-width: 60%;
+  height: 16px;
+}
+
+.esqueleto-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.esqueleto-bloque {
+  height: 176px;
+  border-radius: var(--radio-tarjeta);
+}
+
+/* Bloque corto para los números del resumen mientras carga */
+.esqueleto-corto {
+  display: inline-block;
+  width: 90px;
+  height: 28px;
+}
+
+/* Brillo animado que cruza los bloques del esqueleto */
+.brillo {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-gris-suave);
+  border-radius: 6px;
+}
+
+.brillo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--color-superficie), transparent);
+  animation: brillo 1.4s infinite;
+}
+
+/* ---------- Animaciones -------------------------------------------------- */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes brillo {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Accesibilidad: sin animaciones si el usuario prefiere movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .seccion,
+  .tarjeta {
+    animation: none;
+  }
+
+  .brillo::after {
+    animation: none;
+  }
+}
+
+/* ---------- Menos de 1200px: 2 columnas --------------------------------- */
+@media (max-width: 1199.98px) {
+  .grid-tarjetas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* La destacada ocupa el ancho completo, sin forzar dos filas */
+  .tarjeta-principal {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .esqueleto-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resumen {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ---------- Menos de 768px: 1 columna ----------------------------------- */
+@media (max-width: 767.98px) {
+  .grid-tarjetas {
+    grid-template-columns: 1fr;
+  }
+
+  .tarjeta-principal {
+    grid-column: auto;
+  }
+
+  .esqueleto-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resumen {
+    padding: 20px;
+  }
+
+  /* Indicadores apilados, con separador horizontal */
+  .resumen-indicadores {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .indicador {
+    padding: 0;
+  }
+
+  .indicador + .indicador {
+    border-left: none;
+    border-top: 1px solid var(--color-borde);
+    padding-top: 16px;
+  }
+
+  .seccion-cabecera {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .seccion-chips {
+    width: 100%;
+  }
 }

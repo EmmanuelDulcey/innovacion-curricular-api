@@ -7,10 +7,14 @@
     <header class="cabecera">
       <div>
         <h1>{{ prog['nombre'] }}</h1>
+        <!-- Datos del programa como chips (clase .chip de styles.css), en vez
+             de texto corrido separado por "·". -->
         <p class="sub">
-          {{ prog['tipo'] }} · {{ prog['nivel'] }} · {{ prog['ciudad'] }}
+          <span class="chip">{{ prog['tipo'] }}</span>
+          <span class="chip">{{ prog['nivel'] }}</span>
+          <span class="chip">{{ prog['ciudad'] }}</span>
           @if (prog['facultad_nombre']) {
-            · Facultad: {{ prog['facultad_nombre'] }}
+            <span class="chip">{{ prog['facultad_nombre'] }}</span>
           }
         </p>
       </div>

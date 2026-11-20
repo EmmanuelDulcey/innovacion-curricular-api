@@ -1,13 +1,16 @@
 .no-encontrada {
-  padding: 3rem 1.25rem;
+  max-width: 28rem;
+  margin: 10vh auto 0;
+  padding: 24px;
   text-align: center;
 }
 
 .no-encontrada h1 {
-  color: #0f2a43;
+  color: var(--color-primario);
+  margin: 0 0 8px;
 }
 
-.no-encontrada a {
-  color: #2d6a9f;
-  font-weight: 600;
+.no-encontrada p {
+  color: var(--color-texto-secundario);
+  margin: 0 0 24px;
 }

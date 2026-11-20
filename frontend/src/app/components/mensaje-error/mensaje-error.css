@@ -1,28 +1,30 @@
 /* QUÉ ES: estilos del componente de error reutilizable. */
-/* PAPEL: diferencia los mensajes de error sin cambiar el flujo del formulario. */
+/* PAPEL: banner con borde izquierdo de --color-peligro y fondo rojo muy suave,
+   discreto en vez de alarmante. */
 .mensaje-error {
-  background: #fff3f3;
-  border: 1px solid #d9848480;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin: 0.75rem 0;
-  color: #7a1f1f;
+  background: var(--color-peligro-suave);
+  border: 1px solid var(--color-borde);
+  border-left: 3px solid var(--color-peligro);
+  border-radius: var(--radio);
+  padding: 12px 16px;
+  margin: 12px 0;
+  color: var(--color-peligro);
 }
 
 .mensaje-error .texto {
-  margin: 0 0 0.25rem;
+  margin: 0 0 4px;
 }
 
 .mensaje-error .lista {
   margin: 0;
   padding-left: 1.2rem;
   font-size: 0.9rem;
-  color: #7a1f1f;
+  color: var(--color-peligro);
 }
 
 .mensaje-error .detalle {
-  margin: 0.5rem 0 0;
+  margin: 8px 0 0;
   font-size: 0.8rem;
-  color: #7a1f1f;
+  color: var(--color-peligro);
   opacity: 0.8;
 }

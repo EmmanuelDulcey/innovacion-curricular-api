@@ -1,0 +1,12 @@
+/* El ícono se comporta como texto en línea: hereda el color del contenedor
+   (currentColor) y no agrega márgenes propios. */
+:host {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+svg {
+  display: block;
+}

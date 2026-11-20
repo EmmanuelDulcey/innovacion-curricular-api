@@ -1,75 +1,238 @@
 /* =============================================================================
-   Menú lateral del frontend.
-   Antes era una barra horizontal "sticky"; ahora es una COLUMNA fija al borde
-   izquierdo, a altura completa. El contenido se acomoda con el margen que
-   reserva app.css (--ancho-menu): por eso el menú nunca lo tapa.
-   Solo cambia la disposición: se conservan los colores, los radios y la
-   tipografía que ya usaba la barra horizontal.
+   Menú lateral: 320px, fondo azul noche (--color-menu), marca "IC", acceso al
+   dashboard en píldora acento, grupos plegables con puntos de color y pie fijo
+   con el estado del servidor. El contenido reserva el ancho en app.css.
    ============================================================================= */
 
-/* El componente entero ES el menú: se fija al borde izquierdo y ocupa toda la
-   altura de la ventana. `position: fixed` lo saca del flujo normal de la
-   página (por eso el contenido reserva su ancho con un margen, app.css) y
-   `overflow` del interior le da scroll PROPIO: si hay más opciones de las que
-   caben, se desplaza el menú, no la página. */
+/* Columna fija de borde a borde; el contenido se corre con el margen de
+   app.css (--ancho-menu). `dvh` descuenta la barra del navegador en móvil. */
 :host {
   position: fixed;
   top: 0;
   left: 0;
   width: var(--ancho-menu);
   height: 100vh;
-  /* En celulares, `dvh` descuenta la barra del navegador para que la última
-     opción del menú no quede escondida detrás de ella. */
   height: 100dvh;
   z-index: 20;
 }
 
 .nav-bar {
   display: flex;
-  flex-direction: column; /* título arriba y opciones debajo, en una columna */
+  flex-direction: column;
   height: 100%;
-  padding: 1rem 0.75rem;
-  background: var(--azul-oscuro); /* el mismo azul oscuro de la barra anterior */
-  color: #fff;
-  overflow-y: auto; /* scroll propio del menú cuando no cabe en la pantalla */
+  padding: 24px 16px;
+  background: var(--color-menu);
+  color: var(--color-menu-texto);
+  overflow-y: auto; /* scroll propio si hay más opciones de las que caben */
 }
 
-/* Título del proyecto, separado de las opciones por una línea sutil. */
+/* ---------- Marca ------------------------------------------------------- */
 .marca {
-  font-weight: 700;
-  font-size: 1rem;
-  padding: 0.2rem 0.7rem 0.9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px 20px;
+  border-bottom: 1px solid var(--color-menu-linea);
 }
 
-/* La lista de opciones: una sola columna, de arriba hacia abajo. */
+/* Cuadrado redondeado con las iniciales, en el azul acento */
+.marca-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--color-acento);
+  color: var(--color-sobre-primario);
+  font-size: 1rem;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.marca-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.marca-texto strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-menu-texto);
+}
+
+/* "Gestión Académica" en azul claro */
+.marca-texto span {
+  font-size: 0.72rem;
+  color: var(--color-menu-texto-suave);
+}
+
+/* ---------- Acceso al dashboard ---------------------------------------- */
+.item-dashboard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  color: var(--color-menu-texto);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.item-dashboard:hover {
+  background: var(--color-menu-hover);
+}
+
+/* Píldora activa en --color-acento */
+.item-dashboard.activo {
+  background: var(--color-acento);
+  color: var(--color-sobre-primario);
+}
+
+/* ---------- Grupos plegables ------------------------------------------- */
+.grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.grupo-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-menu-texto-suave);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.grupo-titulo:hover {
+  background: var(--color-menu-hover);
+  color: var(--color-menu-texto);
+}
+
+/* El chevron gira cuando el grupo está cerrado */
+.grupo-titulo app-icono {
+  transition: transform 0.15s ease;
+}
+
+.grupo-titulo.cerrado app-icono {
+  transform: rotate(-90deg);
+}
+
 .opciones {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 2px;
+  margin: 2px 0 8px;
 }
 
-/* Cada opción ocupa su propia fila completa (display: block), con los mismos
-   colores y el mismo tamaño de letra de la barra anterior. */
 .opciones a {
-  display: block;
-  color: #dbe7f3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--color-menu-texto);
+  font-size: 0.86rem;
   text-decoration: none;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  transition: background-color 0.15s ease;
 }
 
 .opciones a:hover {
-  background: #1e4a75;
+  background: var(--color-menu-hover);
 }
 
-/* Página activa: el mismo azul del botón resaltado de antes. */
 .opciones a.activo {
-  background: var(--azul-medio);
-  color: #fff;
+  background: var(--color-menu-hover);
   font-weight: 600;
+}
+
+/* Punto de color del grupo: azul, cian o verde según secciones.ts */
+.punto {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.punto-azul {
+  background: var(--color-punto-azul);
+}
+
+.punto-cian {
+  background: var(--color-punto-cian);
+}
+
+.punto-verde {
+  background: var(--color-punto-verde);
+}
+
+.opcion-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Pie: estado del servidor y versión ------------------------- */
+/* `margin-top: auto` lo empuja al fondo cuando el menú es corto; `sticky`
+   lo mantiene visible si el menú necesita scroll. */
+.pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding: 14px 12px 4px;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-menu);
+  border-top: 1px solid var(--color-menu-linea);
+  color: var(--color-menu-texto-suave);
+  font-size: 0.72rem;
+}
+
+.estado-servidor {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Punto verde conectado / rojo sin conexión */
+.punto-estado {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-exito);
+  flex: 0 0 auto;
+}
+
+.punto-estado.desconectado {
+  background: var(--color-peligro);
+}
+
+.version {
+  padding: 2px 8px;
+  border: 1px solid var(--color-menu-linea);
+  border-radius: var(--radio-chip);
+  font-size: 0.7rem;
+  flex: 0 0 auto;
 }
 
 /* El botón de hamburguesa existe en el HTML siempre, pero en escritorio no se
@@ -79,22 +242,17 @@
 }
 
 /* -----------------------------------------------------------------------------
-   Pantallas angostas (celular): el menú se esconde deslizándose fuera de la
-   pantalla y se abre con el botón ☰.
+   Pantallas angostas: el menú se esconde deslizándose y se abre con ☰.
    -------------------------------------------------------------------------- */
 @media (max-width: 767.98px) {
-  /* El menú conserva su ancho, pero limitado al 85% de la pantalla para que
-     se note que hay contenido detrás (y quede área para tocar). */
   :host {
     width: min(var(--ancho-menu), 85vw);
   }
 
   .nav-bar {
-    /* Escondido: corrido hacia la izquierda, fuera de la vista... */
     transform: translateX(-100%);
-    transition: transform 0.2s ease; /* ...y entra deslizándose. */
-    /* Deja libre la esquina donde vive el botón ☰ (así no tapa el título). */
-    padding-top: 3.4rem;
+    transition: transform 0.2s ease;
+    padding-top: 72px; /* deja libre la esquina del botón ☰ */
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.25);
   }
 
@@ -102,24 +260,20 @@
     transform: translateX(0);
   }
 
-  /* El botón flota sobre la esquina superior izquierda, por ENCIMA del menú
-     (z-index mayor): con el menú escondido abre; con el menú abierto cierra
-     (su icono cambia a ✕). */
+  /* Botón flotante sobre la esquina superior izquierda */
   .btn-menu {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     position: fixed;
-    top: 0.6rem;
-    left: 0.6rem;
-    width: 2.4rem;
-    height: 2.4rem;
+    top: 12px;
+    left: 12px;
+    width: 46px;
+    height: 46px;
     border: none;
-    border-radius: 6px;
-    background: var(--azul-medio); /* azul de la paleta, visible sobre cualquier fondo */
-    color: #fff;
-    font-size: 1.1rem;
-    line-height: 1;
+    border-radius: 10px;
+    background: var(--color-acento);
+    color: var(--color-sobre-primario);
     cursor: pointer;
     z-index: 30;
   }

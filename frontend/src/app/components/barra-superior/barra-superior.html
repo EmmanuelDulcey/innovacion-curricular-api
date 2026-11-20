@@ -1,0 +1,56 @@
+<header class="barra">
+  <!-- Migas de pan: "Inicio > Dashboard > Resumen…" en el dashboard; en un
+       catálogo, el nombre de la tabla. -->
+  <nav class="migas" aria-label="Migas de pan">
+    @for (miga of migas(); track $index; let ultima = $last) {
+      @if (miga.enlace) {
+        <a [routerLink]="miga.enlace">{{ miga.texto }}</a>
+      } @else {
+        <span class="miga-actual">{{ miga.texto }}</span>
+      }
+      @if (!ultima) {
+        <span class="separador" aria-hidden="true">&gt;</span>
+      }
+    }
+  </nav>
+
+  <!-- Buscador: filtra las tarjetas del dashboard por nombre (solo frontend).
+       En móvil queda detrás del ícono de lupa y se despliega debajo. -->
+  <label class="buscador" [class.abierto]="buscadorAbierto()">
+    <app-icono nombre="search" [tamano]="16" />
+    <input
+      type="search"
+      placeholder="Buscar catálogo..."
+      [value]="estado.busqueda()"
+      (input)="actualizarBusqueda($event)"
+    />
+  </label>
+
+  <div class="acciones">
+    <!-- En móvil el buscador se abre desde este ícono -->
+    <button
+      type="button"
+      class="btn-icono btn-buscar"
+      aria-label="Buscar catálogo"
+      [attr.aria-expanded]="buscadorAbierto()"
+      (click)="alternarBuscador()"
+    >
+      <app-icono nombre="search" [tamano]="18" />
+    </button>
+
+    <!-- Exporta el CSV con sección, catálogo y total de los datos cargados -->
+    <button type="button" class="btn-exportar" (click)="exportarCsv()">
+      <app-icono nombre="download" [tamano]="16" />
+      <span>Exportar</span>
+    </button>
+
+    <!-- Usuario: TODO v3: tomar del token cuando exista login -->
+    <div class="usuario">
+      <span class="avatar" aria-hidden="true">{{ usuario.iniciales }}</span>
+      <span class="usuario-texto">
+        <strong>{{ usuario.nombre }}</strong>
+        <small>{{ usuario.rol }}</small>
+      </span>
+    </div>
+  </div>
+</header>

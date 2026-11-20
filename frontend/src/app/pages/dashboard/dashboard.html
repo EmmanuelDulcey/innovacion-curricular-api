@@ -1,27 +1,179 @@
 <section class="dashboard">
-  <header class="encabezado">
-    <h1>Módulo Innovación Curricular</h1>
-    <p>Total de registros activos por catálogo</p>
-  </header>
+  <!-- ====================================================================
+       TARJETA RESUMEN: título y descripción a la izquierda; a la derecha,
+       tres indicadores separados por líneas verticales.
+       ==================================================================== -->
+  <section class="resumen">
+    <div class="resumen-texto">
+      <h1>Módulo de Innovación Curricular</h1>
+      <p>Catálogos activos, registros parametrizados y estado de sincronización del sistema.</p>
+    </div>
+
+    <div class="resumen-indicadores">
+      <!-- Catálogos que cargaron sin error -->
+      <div class="indicador">
+        <span class="indicador-etiqueta">Catálogos activos</span>
+        <span class="indicador-valor">
+          @if (cargando()) {
+            <span class="brillo esqueleto-corto"></span>
+          } @else {
+            <app-numero-animado [valor]="catalogosActivos()" />
+            <small>módulos</small>
+          }
+        </span>
+      </div>
+
+      <!-- Suma real de registros, en el color acento -->
+      <div class="indicador">
+        <span class="indicador-etiqueta">Total de registros</span>
+        <span class="indicador-valor indicador-valor-acento">
+          @if (cargando()) {
+            <span class="brillo esqueleto-corto"></span>
+          } @else {
+            <app-numero-animado [valor]="totalRegistros()" />
+            <small>registros</small>
+          }
+        </span>
+      </div>
+
+      <!-- Hora real en que terminó la última carga del dashboard -->
+      <div class="indicador">
+        <span class="indicador-etiqueta">Última sincronización</span>
+        <span class="indicador-valor indicador-valor-sync">
+          @if (ultimaSincronizacion(); as sincronizacion) {
+            <span class="punto-conectado" aria-hidden="true"></span>
+            <span>{{ sincronizacion }}</span>
+          } @else {
+            <span class="brillo esqueleto-corto"></span>
+          }
+        </span>
+      </div>
+    </div>
+  </section>
 
   @if (cargando()) {
-    <p class="estado-carga">Cargando métricas...</p>
-  } @else {
-    <div class="cuadricula">
-      @for (tarjeta of tarjetas(); track tarjeta.tabla) {
-        <a class="tarjeta" [routerLink]="['/tablas', tarjeta.tabla]">
-          <span class="nombre">{{ tarjeta.nombre }}</span>
-          <span class="total">
-            @if (tarjeta.sinApi) {
-              <span class="sin-api">API no disponible</span>
-            } @else if (tarjeta.error) {
-              <span class="sin-api">Error al cargar</span>
-            } @else {
-              {{ tarjeta.total }}
-            }
-          </span>
-        </a>
-      }
+    <!-- ==================================================================
+         ESQUELETO DE CARGA: silueta de una sección con su encabezado y una
+         cuadrícula de tarjetas, con brillo animado.
+         ================================================================== -->
+    <div class="esqueletos" aria-hidden="true">
+      <div class="esqueleto-seccion">
+        <div class="esqueleto-cabecera">
+          <span class="brillo esqueleto-cuadro"></span>
+          <span class="brillo esqueleto-titulo"></span>
+        </div>
+        <div class="esqueleto-grid">
+          @for (n of esqueletos; track n) {
+            <span class="brillo esqueleto-bloque"></span>
+          }
+        </div>
+      </div>
     </div>
+  } @else if (vista().length === 0) {
+    <!-- Sin coincidencias para el texto del buscador -->
+    <p class="vacio">No hay catálogos que coincidan con «{{ estado.busqueda().trim() }}».</p>
+  } @else {
+    <!-- ==================================================================
+         SECCIONES: franja blanca con borde izquierdo grueso, ícono, título,
+         descripción y chips calculados; debajo, la cuadrícula de tarjetas.
+         ================================================================== -->
+    @for (seccion of vista(); track seccion.id; let i = $index) {
+      <section class="seccion" [style.--i]="i">
+        <header class="seccion-cabecera">
+          <span class="seccion-icono">
+            <app-icono [nombre]="seccion.icono" [tamano]="22" />
+          </span>
+          <div class="seccion-texto">
+            <h2>{{ seccion.titulo }}</h2>
+            <p>{{ seccion.descripcion }}</p>
+          </div>
+          <div class="seccion-chips">
+            <span class="chip-seccion chip-catalogo">
+              <app-numero-animado [valor]="seccion.totalCatalogos" /> Catálogos
+            </span>
+            <span class="chip-seccion chip-registros">
+              <app-numero-animado [valor]="seccion.totalRegistros" /> Registros
+            </span>
+          </div>
+        </header>
+
+        <div class="grid-tarjetas">
+          <!-- TARJETA DESTACADA: la tabla con más registros de la sección.
+               Ocupa 2 columnas x 2 filas; toda la tarjeta es un enlace. -->
+          @if (seccion.principal; as principal) {
+            <a
+              class="tarjeta tarjeta-principal"
+              [routerLink]="['/tablas', principal.tabla]"
+              [style.--i]="0"
+            >
+              <span class="principal-cabecera">
+                <span class="principal-chip">CATÁLOGO PRINCIPAL</span>
+                <span class="principal-icono">
+                  <app-icono [nombre]="principal.visual.icono" [tamano]="22" />
+                </span>
+              </span>
+
+              <h3 class="principal-nombre">{{ principal.nombre }}</h3>
+              <p class="principal-descripcion">{{ principal.visual.descripcion }}</p>
+
+              <span class="principal-divisor" aria-hidden="true"></span>
+
+              <span class="principal-pie">
+                @if (principal.sinApi) {
+                  <span class="sin-api">API no disponible</span>
+                } @else if (principal.error) {
+                  <span class="sin-api">Error al cargar</span>
+                } @else {
+                  <span class="principal-numero">
+                    <app-numero-animado [valor]="principal.total" />
+                  </span>
+                }
+                <span class="principal-etiqueta">Registros parametrizados</span>
+              </span>
+
+              <span class="principal-boton">Administrar &gt;</span>
+            </a>
+          }
+
+          <!-- TARJETAS NORMALES: categoría, ícono, nombre, número y estado -->
+          @for (tarjeta of seccion.resto; track tarjeta.tabla; let j = $index) {
+            <a class="tarjeta" [routerLink]="['/tablas', tarjeta.tabla]" [style.--i]="j + 1">
+              <span class="tarjeta-cabecera">
+                <span class="tarjeta-categoria">{{ tarjeta.visual.categoria }}</span>
+                <span class="tarjeta-icono">
+                  <app-icono [nombre]="tarjeta.visual.icono" [tamano]="18" />
+                </span>
+              </span>
+
+              <h3 class="tarjeta-nombre">{{ tarjeta.nombre }}</h3>
+
+              <span class="tarjeta-pie">
+                <span class="tarjeta-numero">
+                  @if (tarjeta.sinApi) {
+                    <span class="sin-api">API no disponible</span>
+                  } @else if (tarjeta.error) {
+                    <span class="sin-api">Error al cargar</span>
+                  } @else {
+                    <app-numero-animado [valor]="tarjeta.total" />
+                  }
+                </span>
+
+                <!-- Chip verde si hay registros; gris si está vacío o falló -->
+                <span
+                  class="chip-estado"
+                  [class.sin-registros]="tarjeta.total === 0 || tarjeta.sinApi || tarjeta.error"
+                >
+                  {{
+                    tarjeta.total > 0 && !tarjeta.sinApi && !tarjeta.error
+                      ? 'Activo'
+                      : 'Sin registros'
+                  }}
+                </span>
+              </span>
+            </a>
+          }
+        </div>
+      </section>
+    }
   }
 </section>
