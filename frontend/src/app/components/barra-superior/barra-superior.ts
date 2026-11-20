@@ -9,6 +9,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { nombreLegible } from '../../models/catalogo';
+import { rolPrincipal } from '../../models/auth';
+import { AuthService } from '../../services/auth.service';
 import { EstadoUI } from '../../services/estado-ui';
 import { Icono } from '../icono/icono';
 
@@ -26,6 +28,7 @@ interface Miga {
 export class BarraSuperior {
   readonly estado = inject(EstadoUI);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   // URL actual como señal, para que las migas reaccionen a cada navegación.
   private readonly urlActual = signal(this.router.url);
@@ -33,12 +36,23 @@ export class BarraSuperior {
   // En móvil el buscador queda escondido detrás del ícono de lupa.
   readonly buscadorAbierto = signal(false);
 
-  // TODO v3: tomar del token cuando exista login.
-  readonly usuario = {
-    iniciales: 'US',
-    nombre: 'Usuario',
-    rol: 'Innovación Curricular',
-  };
+  // Usuario real de la sesión (v3): nombre, rol y iniciales para el avatar.
+  readonly usuario = computed(() => {
+    const actual = this.auth.usuario();
+    if (!actual) {
+      return { iniciales: 'US', nombre: 'Usuario', rol: 'Sin sesión' };
+    }
+
+    return {
+      iniciales: this.iniciales(actual.nombre_completo || actual.username),
+      nombre: actual.nombre_completo || actual.username,
+      rol: rolPrincipal(actual.roles),
+    };
+  });
+
+  cerrarSesion() {
+    this.auth.cerrarSesion();
+  }
 
   // Migas de pan: en el dashboard las tres del diseño; en un catálogo, el
   // nombre legible de la tabla; en el detalle, la ruta de programas.
@@ -110,5 +124,13 @@ export class BarraSuperior {
     enlace.download = 'catalogos-innovacion-curricular.csv';
     enlace.click();
     URL.revokeObjectURL(url);
+  }
+
+  // Iniciales para el avatar: primera letra del primer y último nombre.
+  private iniciales(texto: string): string {
+    const partes = texto.trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return 'US';
+    if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
   }
 }

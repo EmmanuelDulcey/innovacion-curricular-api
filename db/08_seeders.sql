@@ -498,8 +498,8 @@ IF NOT EXISTS (SELECT 1 FROM alianza WHERE aliado = 890902653 AND departamento =
 
 -- =============================================================================
 -- 17. Tablas del módulo de usuarios (mínimo 5 filas cada una)
---     Son tablas de la v3: la v2 no tiene login. Las contraseñas son de
---     demostración y deberán guardarse con hash cuando se implemente la v3.
+--     Las contraseñas de demostración se guardan como hash bcrypt
+--     (contraseña Demo123!, work factor 12). Ver 09_seguridad_v3.sql.
 -- =============================================================================
 IF NOT EXISTS (SELECT 1 FROM rol WHERE nombre = N'Administrador')
     INSERT INTO rol (nombre, descripcion, activo) VALUES (N'Administrador', N'Acceso total al sistema', 1);
@@ -514,19 +514,19 @@ IF NOT EXISTS (SELECT 1 FROM rol WHERE nombre = N'Consulta')
 
 IF NOT EXISTS (SELECT 1 FROM usuario WHERE username = N'admin')
     INSERT INTO usuario (username, password, email, nombre_completo, activo)
-    VALUES (N'admin', N'Demo123!', N'admin@innovacion.edu.co', N'Administrador del sistema', 1);
+    VALUES (N'admin', N'$2a$12$KV3WyeNony.xApgaVAAqjub4mv6e8G8FBOFhPGmn52iGXZr/cASVi', N'admin@innovacion.edu.co', N'Administrador del sistema', 1);
 IF NOT EXISTS (SELECT 1 FROM usuario WHERE username = N'coordinador')
     INSERT INTO usuario (username, password, email, nombre_completo, activo)
-    VALUES (N'coordinador', N'Demo123!', N'coordinador@innovacion.edu.co', N'Coordinación académica', 1);
+    VALUES (N'coordinador', N'$2a$12$54xubhy.uF6CMb3lXCFuW.8XG2TbRIZ4hs9xVz2rIsCGIsPjKoL4a', N'coordinador@innovacion.edu.co', N'Coordinación académica', 1);
 IF NOT EXISTS (SELECT 1 FROM usuario WHERE username = N'docente.demo')
     INSERT INTO usuario (username, password, email, nombre_completo, activo)
-    VALUES (N'docente.demo', N'Demo123!', N'docente.demo@innovacion.edu.co', N'Docente de demostración', 1);
+    VALUES (N'docente.demo', N'$2a$12$GjpixS9tqEvMRd3PMfMNLe0QXociHp2kK2McH9D4HXsjB9jOiTmM2', N'docente.demo@innovacion.edu.co', N'Docente de demostración', 1);
 IF NOT EXISTS (SELECT 1 FROM usuario WHERE username = N'secretaria')
     INSERT INTO usuario (username, password, email, nombre_completo, activo)
-    VALUES (N'secretaria', N'Demo123!', N'secretaria@innovacion.edu.co', N'Secretaría académica', 1);
+    VALUES (N'secretaria', N'$2a$12$R55tEaoWaTtJ3828QN9N4ug9o9FXGv8bXROrOgo5tUp52nGNa8gtS', N'secretaria@innovacion.edu.co', N'Secretaría académica', 1);
 IF NOT EXISTS (SELECT 1 FROM usuario WHERE username = N'consulta')
     INSERT INTO usuario (username, password, email, nombre_completo, activo)
-    VALUES (N'consulta', N'Demo123!', N'consulta@innovacion.edu.co', N'Usuario de consulta', 1);
+    VALUES (N'consulta', N'$2a$12$3yZCpJtn0zU9CKaUnhWHSOon1wlPz7xkHsJ3zy4FSTERsyiuK0ZDu', N'consulta@innovacion.edu.co', N'Usuario de consulta', 1);
 
 DECLARE @rolAdmin INT = (SELECT TOP (1) id FROM rol WHERE nombre = N'Administrador' ORDER BY id);
 DECLARE @rolCoord INT = (SELECT TOP (1) id FROM rol WHERE nombre = N'Coordinador académico' ORDER BY id);

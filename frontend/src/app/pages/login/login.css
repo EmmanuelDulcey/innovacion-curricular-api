@@ -1,0 +1,328 @@
+/* =============================================================================
+   Login: panel de marca + tarjeta de formulario. Todos los colores salen de
+   las variables globales de styles.css (no se define ningún color nuevo).
+   ============================================================================= */
+:host {
+  display: block;
+}
+
+.login {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 500px);
+  min-height: 100vh;
+  background: var(--color-fondo);
+}
+
+/* ---------- Panel de marca ------------------------------------------------ */
+.lado-marca {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 48px;
+  padding: 56px;
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--color-menu), var(--color-primario));
+  color: var(--color-sobre-primario);
+}
+
+/* Círculos decorativos con los tonos translúcidos ya definidos en la paleta */
+.lado-marca::after,
+.lado-marca::before {
+  position: absolute;
+  content: '';
+  border-radius: 50%;
+  border: 1px solid var(--color-sobre-primario-borde);
+  background: var(--color-sobre-primario-suave);
+  pointer-events: none;
+}
+
+.lado-marca::after {
+  right: -140px;
+  bottom: -160px;
+  width: 420px;
+  height: 420px;
+}
+
+.lado-marca::before {
+  top: -180px;
+  left: -120px;
+  width: 320px;
+  height: 320px;
+  opacity: 0.6;
+}
+
+.marca {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.marca-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radio-tarjeta);
+  background: var(--color-sobre-primario);
+  color: var(--color-primario);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.marca-texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.marca-texto strong {
+  font-size: 1.05rem;
+}
+
+.marca-texto span {
+  color: var(--color-menu-texto-suave);
+  font-size: 0.85rem;
+}
+
+.mensaje-marca {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+}
+
+.etiqueta {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-sobre-primario-borde);
+  border-radius: var(--radio-chip);
+  background: var(--color-sobre-primario-suave);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mensaje-marca h1 {
+  margin: 0 0 16px;
+  color: var(--color-sobre-primario);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.mensaje-marca p {
+  margin: 0 0 28px;
+  color: var(--color-menu-texto-suave);
+  font-size: 1rem;
+  max-width: 48ch;
+}
+
+.beneficios {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.beneficios li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--color-sobre-primario);
+  font-size: 0.92rem;
+}
+
+.beneficios app-icono {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--color-punto-cian);
+}
+
+.pie-marca {
+  position: relative;
+  z-index: 1;
+  color: var(--color-menu-texto-suave);
+  font-size: 0.8rem;
+}
+
+/* ---------- Formulario ---------------------------------------------------- */
+.lado-formulario {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 40px 32px;
+}
+
+.tarjeta {
+  width: 100%;
+  max-width: 420px;
+  padding: 36px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.marca-movil {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: var(--color-primario);
+}
+
+.marca-movil .marca-logo {
+  width: 42px;
+  height: 42px;
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
+}
+
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.icono-cabecera {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: var(--radio);
+  background: var(--color-primario-suave);
+  color: var(--color-primario);
+}
+
+.cabecera h2 {
+  margin: 0 0 4px;
+  font-size: 1.4rem;
+}
+
+.cabecera p {
+  margin: 0;
+  color: var(--color-texto-secundario);
+  font-size: 0.88rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-gris-suave);
+  color: var(--color-texto-secundario);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.control:focus-within {
+  background: var(--color-superficie);
+  border-color: var(--color-acento);
+}
+
+.control input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-texto);
+  font-family: inherit;
+  font-size: 0.92rem;
+}
+
+.control input::placeholder {
+  color: var(--color-texto-secundario);
+}
+
+.ver {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radio);
+  background: transparent;
+  color: var(--color-texto-secundario);
+  cursor: pointer;
+}
+
+.ver:hover {
+  background: var(--color-primario-suave);
+  color: var(--color-primario);
+}
+
+.btn-entrar {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 24px;
+  font-size: 0.95rem;
+}
+
+.ayuda {
+  margin: 18px 0 0;
+  color: var(--color-texto-secundario);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.pie {
+  margin: 0;
+  color: var(--color-texto-secundario);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+/* ---------- Responsive ---------------------------------------------------- */
+@media (max-width: 900px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+
+  .lado-marca {
+    display: none;
+  }
+
+  .lado-formulario {
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  .marca-movil {
+    display: flex;
+  }
+
+  .tarjeta {
+    padding: 28px 22px;
+  }
+}

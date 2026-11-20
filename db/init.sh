@@ -13,6 +13,7 @@
 #   6. 05_identificadores_incrementales.sql  -> IDs internos generados por SQL
 #   7. 07_docente.sql                         -> catálogo auxiliar con IDENTITY
 #   8. 08_seeders.sql                         -> al menos 5 filas activas por tabla
+#   9. 09_seguridad_v3.sql                    -> login JWT y contraseñas bcrypt
 #
 # Los pasos 1-3 son la base de la v1: sólo corren cuando la base NO existe, para
 # no volver a sembrar (no se borran cambios hechos por la API). Los pasos 4-8 son
@@ -85,7 +86,7 @@ case "$estado" in
 esac
 
 # -----------------------------------------------------------------------------
-# v2: scripts idempotentes y no destructivos. Se aplican SIEMPRE para migrar
+# v2/v3: scripts idempotentes y no destructivos. Se aplican SIEMPRE para migrar
 # una base de la v1 y para dejar lista una recien creada.
 #   * 03_activar_borrado_logico_v2.sql -> `activo` en las 15 tablas + contador
 #   * 04_procedimientos_v2_*.sql       -> procedimientos + disparador
@@ -93,12 +94,13 @@ esac
 #   * 06_datos_demostracion.sql            -> ejemplos académicos idempotentes
 #   * 07_docente.sql                       -> catálogo docente y FK locales
 #   * 08_seeders.sql                       -> al menos 5 filas activas por tabla
+#   * 09_seguridad_v3.sql                  -> procedimientos y hashes de login
 # -----------------------------------------------------------------------------
-echo "[init] Aplicando los scripts de la v2 (idempotentes)."
+echo "[init] Aplicando los scripts de la v2/v3 (idempotentes)."
 run_script /scripts/03_activar_borrado_logico_v2.sql
 
 shopt -s nullglob
-for script in /scripts/04_*.sql /scripts/05_*.sql /scripts/06_*.sql /scripts/07_*.sql /scripts/08_*.sql; do
+for script in /scripts/04_*.sql /scripts/05_*.sql /scripts/06_*.sql /scripts/07_*.sql /scripts/08_*.sql /scripts/09_*.sql; do
   run_script "$script"
 done
 

@@ -1,7 +1,16 @@
+using System.Text;
+using System.Threading.RateLimiting;
+using ApiInnovacion.Configuracion;
+using ApiInnovacion.Middlewares;
 using ApiInnovacion.Respuestas;
 using ApiInnovacion.Repositorios;
 using ApiInnovacion.Servicios;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 // -----------------------------------------------------------------------------
 // Mapeo columna -> propiedad en Dapper.
@@ -19,6 +28,21 @@ using Microsoft.AspNetCore.Mvc;
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// -----------------------------------------------------------------------------
+// Configuracion JWT (v3). El secreto NUNCA debe quedar hardcodeado en un
+// repositorio real: en Docker se inyecta Jwt__Secret desde JWT_SECRET.
+// -----------------------------------------------------------------------------
+var jwt = builder.Configuration.GetSection(JwtOpciones.Seccion).Get<JwtOpciones>()
+    ?? throw new InvalidOperationException("La sección Jwt no está configurada.");
+
+if (string.IsNullOrWhiteSpace(jwt.Secret) || Encoding.UTF8.GetByteCount(jwt.Secret) < 32)
+    throw new InvalidOperationException("Jwt:Secret debe tener al menos 32 caracteres.");
+
+if (jwt.ExpirationMinutes <= 0)
+    throw new InvalidOperationException("Jwt:ExpirationMinutes debe ser mayor que 0.");
+
+builder.Services.Configure<JwtOpciones>(builder.Configuration.GetSection(JwtOpciones.Seccion));
 
 // Cadena de conexion: variable de entorno DB_CONNECTION (la usa docker-compose) o,
 // si no esta, appsettings.json (por defecto localhost,11467 para correr sin Docker).
@@ -80,8 +104,98 @@ builder.Services.AddCors(opciones =>
 });
 
 // Swagger: documentacion interactiva en /swagger. Fuente: 6_contracts.md §10.
+// Se agrega el candado Bearer para poder probar endpoints protegidos con el
+// token devuelto por /api/login.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(opciones =>
+{
+    opciones.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Pegue el token JWT devuelto por POST /api/login."
+    });
+
+    opciones.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// -----------------------------------------------------------------------------
+// Autenticacion y autorizacion (v3).
+//  * JWT HS256 validado con emisor, audiencia, firma y expiracion.
+//  * Politica de respaldo: toda ruta exige usuario autenticado salvo las que
+//    declaran [AllowAnonymous] (login y diagnostico).
+//  * Rate limit del login: 10 intentos por minuto y por IP.
+// -----------------------------------------------------------------------------
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opciones =>
+    {
+        opciones.MapInboundClaims = false;
+        opciones.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            NameClaimType = "unique_name",
+            RoleClaimType = "role"
+        };
+    });
+
+builder.Services.AddAuthorization(opciones =>
+{
+    opciones.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+builder.Services.AddRateLimiter(opciones =>
+{
+    opciones.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Una ventana fija por IP: 10 intentos por minuto. Si no se puede resolver
+    // la IP se usa una partición compartida ("desconocido"), nunca una global.
+    opciones.AddPolicy("login", contexto =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            contexto.Connection.RemoteIpAddress?.ToString() ?? "desconocido",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
+    opciones.OnRejected = async (contexto, token) =>
+    {
+        contexto.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+        await contexto.HttpContext.Response.WriteAsJsonAsync(new RespuestaError
+        {
+            Estado = StatusCodes.Status429TooManyRequests,
+            Mensaje = "Demasiados intentos. Espere un minuto e intente de nuevo.",
+            Detalle = "Límite de intentos de inicio de sesión."
+        }, cancellationToken: token);
+    };
+});
 
 // -----------------------------------------------------------------------------
 // ENSAMBLADOR: registros de dependencias solos (nadie mas conoce clases concretas).
@@ -191,12 +305,26 @@ builder.Services.AddScoped<IRepositorioAnPrograma>(
     _ => new RepositorioAnProgramaSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioAnPrograma, ServicioAnPrograma>();
 
+// v3 - autenticacion. El hasher y el emisor de tokens no tienen estado por
+// peticion (bcrypt usa sal interna y el JWT se firma con la configuracion),
+// por eso son singleton. El repositorio y el servicio trabajan por peticion.
+builder.Services.AddSingleton<IServicioHashContrasena, ServicioHashContrasena>();
+builder.Services.AddSingleton<ITokenJwt, ServicioTokenJwt>();
+builder.Services.AddScoped<IRepositorioUsuario>(
+    _ => new RepositorioUsuarioSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioAutenticacion, ServicioAutenticacion>();
+
 var app = builder.Build();
 
 // -----------------------------------------------------------------------------
-// Pipeline: CORS -> Swagger (solo dev) -> rutas.
+// Pipeline: CORS -> rate limit -> autenticacion -> autorizacion -> regla de
+// escritura por rol -> Swagger (solo dev) -> rutas.
 // -----------------------------------------------------------------------------
 app.UseCors("Frontend");
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseMiddleware<RestringirEscrituraMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -208,12 +336,14 @@ app.MapControllers();
 
 // -----------------------------------------------------------------------------
 // GET / -> Diagnostico (RF7). Fuente: 6_contracts.md §1.
+// Es publico a proposito: sirve para verificar que la API esta viva antes de
+// iniciar sesion. El resto de rutas queda protegido por la politica de respaldo.
 // -----------------------------------------------------------------------------
 app.MapGet("/", () => Results.Json(new RespuestaDiagnostico
 {
     Mensaje = "API Innovación Curricular funcionando",
     Version = "v2",
     Contratos = "docs/spec_kit/versiones/v2/6_contracts.md"
-}));
+})).AllowAnonymous();
 
 app.Run();

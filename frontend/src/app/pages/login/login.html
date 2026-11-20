@@ -1,0 +1,113 @@
+<div class="login">
+  <!-- Panel de marca: solo visible en pantallas amplias -->
+  <aside class="lado-marca" aria-hidden="true">
+    <div class="marca">
+      <span class="marca-logo">IC</span>
+      <div class="marca-texto">
+        <strong>Innovación Curricular</strong>
+        <span>Gestión Académica</span>
+      </div>
+    </div>
+
+    <div class="mensaje-marca">
+      <span class="etiqueta">Módulo de Innovación Curricular</span>
+      <h1>La información académica, en un solo lugar.</h1>
+      <p>
+        Administre programas, acreditaciones, docentes y alianzas con
+        trazabilidad y control de acceso por roles.
+      </p>
+      <ul class="beneficios">
+        <li>
+          <app-icono nombre="shield" [tamano]="18" />
+          <span>Acceso protegido con JWT y contraseñas cifradas.</span>
+        </li>
+        <li>
+          <app-icono nombre="users" [tamano]="18" />
+          <span>Permisos por rol: administración, coordinación y consulta.</span>
+        </li>
+        <li>
+          <app-icono nombre="layers" [tamano]="18" />
+          <span>Catálogos centralizados y siempre disponibles.</span>
+        </li>
+      </ul>
+    </div>
+
+    <footer class="pie-marca">Universidad · Aplicaciones y Servicios Web</footer>
+  </aside>
+
+  <!-- Formulario -->
+  <main class="lado-formulario">
+    <div class="tarjeta">
+      <div class="marca-movil">
+        <span class="marca-logo" aria-hidden="true">IC</span>
+        <strong>Innovación Curricular</strong>
+      </div>
+
+      <header class="cabecera">
+        <span class="icono-cabecera" aria-hidden="true">
+          <app-icono nombre="lock" [tamano]="22" />
+        </span>
+        <div>
+          <h2>Iniciar sesión</h2>
+          <p>Ingrese con las credenciales asignadas por el administrador.</p>
+        </div>
+      </header>
+
+      <app-mensaje-error [error]="error()" />
+
+      <form (ngSubmit)="enviar()" novalidate>
+        <label class="campo">
+          <span>Usuario</span>
+          <div class="control">
+            <app-icono nombre="user" [tamano]="18" />
+            <input
+              name="username"
+              type="text"
+              autocomplete="username"
+              placeholder="Ej. admin"
+              [value]="username()"
+              (input)="actualizarUsername($event)"
+              [disabled]="cargando()"
+              autofocus
+            />
+          </div>
+        </label>
+
+        <label class="campo">
+          <span>Contraseña</span>
+          <div class="control">
+            <app-icono nombre="lock" [tamano]="18" />
+            <input
+              name="password"
+              [type]="verPassword() ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="••••••••"
+              [value]="password()"
+              (input)="actualizarPassword($event)"
+              [disabled]="cargando()"
+            />
+            <button
+              type="button"
+              class="ver"
+              (click)="alternarPassword()"
+              [attr.aria-label]="verPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              [attr.title]="verPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            >
+              <app-icono [nombre]="verPassword() ? 'eye-off' : 'eye'" [tamano]="18" />
+            </button>
+          </div>
+        </label>
+
+        <button type="submit" class="btn-primario btn-entrar" [disabled]="!puedeEnviar()">
+          {{ cargando() ? 'Verificando...' : 'Entrar al sistema' }}
+        </button>
+      </form>
+
+      <p class="ayuda">
+        ¿Problemas para ingresar? Contacte al administrador del módulo.
+      </p>
+    </div>
+
+    <p class="pie">Innovación Curricular · v2 · {{ anio }}</p>
+  </main>
+</div>
