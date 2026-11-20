@@ -1,9 +1,10 @@
-import { Component, computed, effect, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 import { MensajeError } from '../../components/mensaje-error/mensaje-error';
 import {
   ApiError,
@@ -115,6 +116,11 @@ export class ProgramaDetalle {
   ];
 
   private cargaVersion = 0;
+
+  // Mismo permiso de escritura que la página de catálogo: la API es la
+  // autoridad final y esta señal solo evita ofrecer acciones no permitidas.
+  private readonly auth = inject(AuthService);
+  readonly puedeEscribir = this.auth.puedeEscribir;
 
   constructor(private readonly api: ApiService) {}
 
@@ -287,6 +293,7 @@ export class ProgramaDetalle {
   // ---- Renglones del detalle (varios por envío) ----------------------------
 
   agregarRenglon(seccion: Seccion) {
+    if (!this.puedeEscribir()) return;
     const nuevo: CualquierRegistro = {};
     for (const campo of seccion.campos) {
       // Las claves internas que genera SQL Server y las columnas derivadas no
@@ -314,6 +321,7 @@ export class ProgramaDetalle {
   }
 
   async guardarRenglones(seccion: Seccion) {
+    if (!this.puedeEscribir()) return;
     const filas = this.borradores()[seccion.tabla] ?? [];
     if (filas.length === 0) return;
 
@@ -378,6 +386,7 @@ export class ProgramaDetalle {
   }
 
   async retirarDeSeccion(seccion: Seccion, fila: CualquierRegistro) {
+    if (!this.puedeEscribir()) return;
     if (!window.confirm('¿Retirar este registro?')) return;
 
     try {

@@ -25,3 +25,26 @@ Este repositorio contiene todo el sistema del módulo Innovación Curricular baj
 
 ## 🚀 Objetivo
 Implementar el módulo Innovación Curricular completo (API + Frontend) siguiendo buenas prácticas de arquitectura y control de versiones.
+
+## 🔐 Autenticación (v3)
+
+- `POST /api/login` recibe `{ "username", "password" }` y devuelve un **JWT** (`token`, `expira`, `usuario`).
+- El resto de endpoints exige `Authorization: Bearer <token>`. La única excepción es `GET /` (diagnóstico).
+- Las contraseñas se almacenan como **hash bcrypt** (work factor 12); nunca en texto plano.
+- **Roles y permisos**:
+  - `Administrador`, `Coordinador académico` y `Secretaría académica` pueden crear, editar y retirar.
+  - `Docente` y `Consulta` son de solo lectura (la API responde `403` ante cualquier escritura).
+- El secreto JWT se configura con `Jwt:Secret` (`appsettings.json` para desarrollo) o con la variable de entorno `Jwt__Secret` / `JWT_SECRET` en Docker.
+- El login tiene un límite de **10 intentos por minuto por IP**.
+
+### Credenciales de demostración
+
+| Usuario | Contraseña | Rol |
+|---|---|---|
+| `admin` | `Demo123!` | Administrador |
+| `coordinador` | `Demo123!` | Coordinador académico |
+| `secretaria` | `Demo123!` | Secretaría académica |
+| `docente.demo` | `Demo123!` | Docente (solo lectura) |
+| `consulta` | `Demo123!` | Consulta (solo lectura) |
+
+> Cambie estas credenciales y el `JWT_SECRET` antes de cualquier despliegue real.

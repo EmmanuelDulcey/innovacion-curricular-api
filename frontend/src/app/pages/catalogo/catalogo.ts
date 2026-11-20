@@ -3,12 +3,13 @@
 // PAPEL: configura el catálogo desde catalogo.ts y concentra el filtrado en vivo,
 //       las opciones de claves y las operaciones sobre cada registro o relación.
 // =============================================================================
-import { Component, computed, effect, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 import { MensajeError } from '../../components/mensaje-error/mensaje-error';
 import {
   ApiError,
@@ -65,6 +66,11 @@ export class Catalogo {
   // Modelo del formulario: objeto plano con las claves snake_case del campo.
   readonly forma: Record<string, any> = {};
   private cargaVersion = 0;
+
+  // Permiso de escritura según el rol de la sesión. La API vuelve a validarlo
+  // en cada petición; aquí solo se ocultan las acciones para no ofrecerlas.
+  private readonly auth = inject(AuthService);
+  readonly puedeEscribir = this.auth.puedeEscribir;
 
   // La misma instancia de la página se reutiliza al cambiar :tabla. El efecto
   // reinicia el estado y carga el catálogo nuevo sin dejar datos de la ruta
@@ -226,6 +232,7 @@ export class Catalogo {
   }
 
   abrirCrear() {
+    if (!this.puedeEscribir()) return;
     const cfg = this.config()!;
     const fila: Record<string, any> = {};
     // Los desplegables, los Sí/No y los campos opcionales arrancan en null (la
@@ -240,6 +247,7 @@ export class Catalogo {
   }
 
   abrirEditar(fila: CualquierRegistro) {
+    if (!this.puedeEscribir()) return;
     const cfg = this.config()!;
     const copia: Record<string, any> = { ...fila };
     // El <input type="date"> solo acepta "yyyy-MM-dd"; se recorta la hora si vino.
@@ -290,6 +298,7 @@ export class Catalogo {
   }
 
   async eliminar(fila: CualquierRegistro) {
+    if (!this.puedeEscribir()) return;
     const cfg = this.config()!;
     const pregunta = this.esCompuesta() ? '¿Retirar esta relación?' : '¿Eliminar este registro?';
     if (!window.confirm(pregunta)) return;
@@ -309,6 +318,7 @@ export class Catalogo {
   }
 
   async guardar() {
+    if (!this.puedeEscribir()) return;
     const cfg = this.config()!;
     const esEdicion = this.editando()?.esEdicion ?? false;
 
