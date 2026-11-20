@@ -1,0 +1,229 @@
+/* =============================================================================
+   Barra superior blanca, común a todas las páginas: migas, buscador, botón
+   Exportar y bloque de usuario. Se pega al borde superior al hacer scroll.
+   ============================================================================= */
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  padding: 0 32px;
+  background: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+/* ---------- Migas de pan ------------------------------------------------- */
+.migas {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  white-space: nowrap;
+}
+
+.migas a {
+  color: var(--color-texto-secundario);
+  text-decoration: none;
+}
+
+.migas a:hover {
+  color: var(--color-acento);
+}
+
+/* Tramo actual: resaltado y recortado con puntos suspensivos si no cabe */
+.miga-actual {
+  color: var(--color-texto);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.separador {
+  color: var(--color-texto-secundario);
+  opacity: 0.6;
+}
+
+/* ---------- Buscador ----------------------------------------------------- */
+.buscador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  width: 260px;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--color-gris-suave);
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  color: var(--color-texto-secundario);
+}
+
+/* Al enfocar, el campo se aclara y el borde toma el azul acento */
+.buscador:focus-within {
+  background: var(--color-superficie);
+  border-color: var(--color-acento);
+}
+
+.buscador input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--color-texto);
+}
+
+.buscador input::placeholder {
+  color: var(--color-texto-secundario);
+}
+
+/* ---------- Acciones ----------------------------------------------------- */
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+/* Botón de lupa: solo aparece en móvil (el CSS de abajo lo muestra) */
+.btn-icono {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background: var(--color-superficie);
+  color: var(--color-texto-secundario);
+  cursor: pointer;
+}
+
+.btn-icono:hover {
+  border-color: var(--color-acento);
+  color: var(--color-acento);
+}
+
+/* Botón "Exportar" con borde */
+.btn-exportar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-exportar:hover {
+  border-color: var(--color-acento);
+  color: var(--color-acento);
+}
+
+/* ---------- Bloque de usuario ------------------------------------------- */
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--color-acento);
+  color: var(--color-sobre-primario);
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.usuario-texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.usuario-texto strong {
+  font-size: 0.85rem;
+  color: var(--color-texto);
+}
+
+.usuario-texto small {
+  font-size: 0.75rem;
+  color: var(--color-texto-secundario);
+}
+
+/* ---------- Móvil --------------------------------------------------------- */
+/* La barra pasa a cuadrícula: migas y acciones arriba; el buscador, cuando se
+   abre desde la lupa, ocupa una segunda fila completa. El padding izquierdo
+   deja libre el botón hamburguesa del menú. */
+@media (max-width: 767.98px) {
+  .barra {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: 12px 16px 12px 64px;
+  }
+
+  .migas {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 0.78rem;
+  }
+
+  .acciones {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 8px;
+  }
+
+  .buscador {
+    display: none;
+    width: 100%;
+  }
+
+  .buscador.abierto {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .btn-buscar {
+    display: inline-flex;
+  }
+
+  /* El botón Exportar queda solo con el ícono para ahorrar ancho */
+  .btn-exportar {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .btn-exportar span {
+    display: none;
+  }
+
+  .usuario-texto {
+    display: none;
+  }
+}

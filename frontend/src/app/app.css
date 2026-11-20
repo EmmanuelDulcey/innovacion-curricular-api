@@ -1,20 +1,27 @@
 /* El menú lateral es `position: fixed` (nav-bar.css): no ocupa espacio en el
-   flujo de la página. Por eso el contenido RESERVA su ancho con este margen
-   izquierdo; el margen derecho automático lo centra en el espacio restante,
-   como hacía antes. */
+   flujo. El contenido reserva su ancho con este margen y pinta el fondo
+   general; adentro van la barra superior (sticky) y la página con padding. */
 .contenido {
-  max-width: 1200px;
-  margin: 0 auto 0 var(--ancho-menu);
-  padding: 0.5rem;
   min-height: 100vh;
+  margin-left: var(--ancho-menu);
+  background: var(--color-fondo);
 }
 
-/* En pantallas angostas el menú se esconde (off-canvas, nav-bar.css): el
-   contenido usa todo el ancho y el botón ☰ flota sobre la esquina. */
+/* Padding generoso en múltiplos de 8px y un ancho máximo cómodo para el
+   dashboard y las tablas. */
+.pagina {
+  max-width: 1440px;
+  padding: 32px;
+}
+
+/* En pantallas angostas el menú se esconde (off-canvas) y el contenido usa
+   todo el ancho; el botón ☰ flota sobre la esquina (nav-bar.css). */
 @media (max-width: 767.98px) {
   .contenido {
     margin-left: 0;
-    /* Espacio arriba para que el botón ☰ no tape el inicio de la página. */
-    padding-top: 3.4rem;
+  }
+
+  .pagina {
+    padding: 16px;
   }
 }

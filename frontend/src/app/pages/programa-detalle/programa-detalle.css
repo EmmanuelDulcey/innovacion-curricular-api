@@ -1,79 +1,100 @@
 /* Pantalla maestro-detalle de programa: mismos tonos y radios que la página de
-   catálogo para que el CRUD se sienta una sola interfaz. */
+   catálogo (variables de styles.css) para que el CRUD se sienta una sola
+   interfaz. */
 
 .detalle {
-  padding: 1.25rem;
+  padding: 0;
 }
 
 .cabecera {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .cabecera h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.4rem;
+  margin: 0 0 8px;
+  font-size: 1.5rem;
 }
 
+/* Los datos del programa (tipo, nivel, ciudad, facultad) como chips, en vez
+   de texto corrido separado por "·". */
 .sub {
   margin: 0;
-  color: #5a6b7c;
-  font-size: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .volver {
-  color: #1e4a75;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  border: 1px solid var(--color-primario);
+  border-radius: var(--radio);
+  color: var(--color-primario);
   font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
   white-space: nowrap;
 }
 
+.volver:hover {
+  background: var(--color-primario-suave);
+}
+
+/* Tarjeta destacada del contador de acreditaciones: el número grande en el
+   color primario, como pide el rediseño para los datos destacados. */
 .contador {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 1rem 0;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d4dce4;
-  border-radius: 8px;
-  background: #f2f8ff;
+  gap: 16px;
+  margin: 24px 0;
+  padding: 16px 20px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
 }
 
 .contador .numero {
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: #1e4a75;
+  color: var(--color-primario);
 }
 
 .contador .leyenda {
-  color: #5a6b7c;
+  color: var(--color-texto-secundario);
   font-size: 0.85rem;
 }
 
+/* Cada sección (acreditaciones, registros, puentes...) en su propia tarjeta
+   blanca, separada del resto. */
 .seccion {
-  margin-top: 1.5rem;
-  padding: 1rem 1.25rem 1.25rem;
-  border: 1px solid #d4dce4;
-  border-radius: 10px;
-  background: #fafcfe;
+  margin-top: 24px;
+  padding: 16px 20px 20px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
 }
 
 .seccion h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 12px;
   font-size: 1.05rem;
 }
 
 .vacio {
-  color: #5a6b7c;
-  padding: 0.5rem 0;
+  color: var(--color-texto-secundario);
+  padding: 8px 0;
 }
 
 .tabla-contenedor {
   overflow-x: auto;
-  border: 1px solid #d4dce4;
-  border-radius: 8px;
-  background: #fff;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
 }
 
 table {
@@ -85,13 +106,13 @@ table {
 th,
 td {
   text-align: left;
-  padding: 0.55rem 0.7rem;
-  border-bottom: 1px solid #e2e8ef;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-borde);
 }
 
 th {
-  background: #f2f5f8;
-  color: #0f2a43;
+  background: var(--color-fondo);
+  color: var(--color-primario);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -100,98 +121,124 @@ tr:last-child td {
   border-bottom: none;
 }
 
+tbody tr:hover {
+  background: var(--color-primario-suave);
+}
+
 .acciones {
   white-space: nowrap;
 }
 
 .btn-eliminar {
-  padding: 0.3rem 0.7rem;
+  min-height: 32px;
+  padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 0.8rem;
-  background: #fdeeee;
-  color: #a33;
+  font-family: inherit;
+  background: var(--color-peligro-suave);
+  color: var(--color-peligro);
 }
 
 .btn-eliminar:hover {
-  background: #fadcdc;
+  background: var(--color-peligro-suave-hover);
 }
 
+/* Renglón nuevo en edición en línea: borde punteado para distinguirlo de las
+   filas ya guardadas, con los mismos campos del formulario del catálogo. */
 .renglon {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  border: 1px dashed #c5ced8;
-  border-radius: 8px;
-  background: #fff;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-fondo);
 }
 
 .campo {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 6px;
   min-width: 11rem;
 }
 
 .campo label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #0f2a43;
+  color: var(--color-texto);
 }
 
 .req {
-  color: #a33;
+  color: var(--color-peligro);
 }
 
 .campo input,
 .campo select {
-  padding: 0.45rem 0.65rem;
-  border: 1px solid #c5ced8;
-  border-radius: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
   font-size: 0.88rem;
-  background: #fff;
+  font-family: inherit;
+  background: var(--color-superficie);
+  color: var(--color-texto);
 }
 
 .acciones-seccion {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .btn-guardar {
-  padding: 0.5rem 1.1rem;
-  background: #2d6a9f;
-  color: #fff;
+  min-height: 40px;
+  padding: 0 18px;
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radio);
   font-weight: 600;
   cursor: pointer;
 }
 
 .btn-guardar:hover {
-  background: #1e4a75;
+  background: var(--color-primario-hover);
 }
 
 .btn-guardar:disabled {
-  background: #9db8cf;
+  opacity: 0.55;
   cursor: default;
 }
 
 .btn-cancelar {
-  padding: 0.5rem 1.1rem;
-  background: #eceff2;
-  color: #0f2a43;
-  border: 1px solid #c5ced8;
-  border-radius: 6px;
+  min-height: 40px;
+  padding: 0 18px;
+  background: var(--color-superficie);
+  color: var(--color-primario);
+  border: 1px solid var(--color-primario);
+  border-radius: var(--radio);
   cursor: pointer;
 }
 
+.btn-cancelar:hover {
+  background: var(--color-primario-suave);
+}
+
 .nota-ayuda {
-  color: #5a6b7c;
+  color: var(--color-texto-secundario);
   font-size: 0.8rem;
+}
+
+@media (max-width: 767.98px) {
+  .btn-eliminar,
+  .btn-guardar,
+  .btn-cancelar {
+    min-height: 44px;
+  }
 }

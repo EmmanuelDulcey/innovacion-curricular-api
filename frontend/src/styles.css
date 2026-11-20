@@ -1,15 +1,67 @@
-/* Estilos globales de la v1 (paleta consistente con nav-bar y catalogo). */
+/* =============================================================================
+   Estilos globales.
+   ÚNICO lugar del frontend donde se escriben colores. Toda la paleta vive aquí
+   como variables CSS y el resto de los archivos solo las referencia con
+   var(--nombre). También viven aquí las piezas que se repiten en varias
+   pantallas (botones, tarjetas, estados vacíos) para no duplicar reglas.
+   ============================================================================= */
 :root {
-  --azul-oscuro: #0f2a43;
-  --azul-medio: #2d6a9f;
-  --gris-texto: #3d4a57;
-  --gris-suave: #5a6b7c;
-  --borde: #d4dce4;
+  /* --- Paleta institucional -------------------------------------------- */
+  --color-primario: #000073;        /* marca, encabezados de sección, números */
+  --color-menu: #0b1437;            /* fondo del menú lateral (azul noche) */
+  --color-acento: #2563eb;          /* botón activo del menú, botón Administrar, chips */
+  --color-fondo: #f2f2f2;           /* fondo general de la página */
+  --color-superficie: #ffffff;      /* tarjetas, barras, formularios */
+  --color-primario-suave: #e8eefc;  /* hover, filas seleccionadas, chips suaves */
+  --color-acento-suave: #e8eefc;    /* cuadros de íconos y fondos suaves del acento */
+  --color-gris-suave: #f3f4f8;      /* chips grises ("Sin registros") y campos */
+  --color-texto: #1a1a2e;
+  --color-texto-secundario: #6b7280;
+  --color-borde: #e3e6ee;
+  --color-peligro: #c62828;         /* eliminar, errores */
+  --color-peligro-suave: #fbebeb;   /* fondo de banners/badges de error */
+  --color-exito: #16a34a;
+  --color-exito-suave: #dcfce7;     /* fondo de badges de éxito/activo */
+
+  /* Variantes "hover" de los colores de arriba. Viven aquí (y no repetidas en
+     cada página) para que ningún archivo fuera de styles.css escriba un color. */
+  --color-primario-hover: #000059;       /* botones primarios al pasar el mouse */
+  --color-primario-suave-hover: #d7e2fa; /* chips/acciones suaves al pasar el mouse */
+  --color-peligro-suave-hover: #f5d6d6;  /* acciones de peligro suaves al pasar el mouse */
+  --color-exito-suave-hover: #c9f2d4;    /* acciones de éxito suaves al pasar el mouse */
+
+  /* Tonos intermedios del azul institucional (usados por pantallas heredadas) */
+  --color-primario-medio: #3333a0;
+  --color-primario-tenue: #6666b3;
+  --color-primario-claro: #b3b3d9;
+
+  /* Texto sobre fondos azules (menú, tarjetas destacadas) */
+  --color-sobre-primario: #ffffff;
+  --color-sobre-primario-suave: rgba(255, 255, 255, 0.12);
+  --color-sobre-primario-borde: rgba(255, 255, 255, 0.18);
+
+  /* --- Menú lateral ----------------------------------------------------- */
+  --color-menu-texto: #ffffff;
+  --color-menu-texto-suave: #93a3d8;     /* subtítulo "Gestión Académica" */
+  --color-menu-hover: rgba(255, 255, 255, 0.06);
+  --color-menu-linea: rgba(255, 255, 255, 0.08);
+
+  /* Puntos de color de los grupos del menú */
+  --color-punto-azul: #2563eb;
+  --color-punto-cian: #22d3ee;
+  --color-punto-verde: #22c55e;
+
+  /* --- Sombras y medidas compartidas ----------------------------------- */
+  --sombra-tarjeta: 0 10px 24px rgba(11, 20, 55, 0.12);
+
   /* Ancho del menú lateral. Vive aquí porque lo necesitan DOS archivos: el
      menú (nav-bar.css, que se fija a ese ancho) y el contenido (app.css, que
      reserva ese mismo espacio con un margen). Con una sola variable no pueden
      desincronizarse. */
-  --ancho-menu: 240px;
+  --ancho-menu: 320px;
+  --radio: 8px;
+  --radio-tarjeta: 14px;
+  --radio-chip: 999px;
 }
 
 * {
@@ -23,25 +75,143 @@ body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color: var(--gris-texto);
-  background: #f6f8fa;
+  /* Inter si está instalada en el equipo; si no, el stack del sistema (no se
+     usa CDN, según las reglas del rediseño). */
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  color: var(--color-texto);
+  background: var(--color-fondo);
   line-height: 1.5;
 }
 
 h1,
 h2,
 h3 {
-  color: var(--azul-oscuro);
+  color: var(--color-primario);
+  font-weight: 600;
 }
 
 a {
-  color: var(--azul-medio);
+  color: var(--color-primario);
 }
 
 code {
-  background: #eceff2;
+  background: var(--color-primario-suave);
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
   font-size: 0.85em;
+}
+
+/* Foco visible en cualquier elemento interactivo (accesibilidad, AA): un
+   contorno sólido en el color primario, nunca el foco por defecto del
+   navegador que suele perderse sobre fondos oscuros. */
+:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+/* -----------------------------------------------------------------------
+   Botones compartidos. Las páginas solo agregan la clase; ningún color
+   nuevo se define fuera de aquí.
+   - .btn-primario: acción principal (crear, guardar, asignar).
+   - .btn-secundario: acción alterna (editar, cancelar).
+   - .btn-peligro: acción destructiva (eliminar, retirar).
+   Altura mínima de 40px (44px en móvil) para un área de toque cómoda.
+   -------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 1rem;
+  border-radius: var(--radio);
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-primario {
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
+}
+
+.btn-primario:hover {
+  background: var(--color-primario-hover);
+}
+
+.btn-secundario {
+  background: var(--color-superficie);
+  color: var(--color-primario);
+  border-color: var(--color-primario);
+}
+
+.btn-secundario:hover {
+  background: var(--color-primario-suave);
+}
+
+.btn-peligro {
+  background: var(--color-superficie);
+  color: var(--color-peligro);
+  border-color: var(--color-peligro);
+}
+
+.btn-peligro:hover {
+  background: var(--color-peligro-suave);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Botones "pequeños" para acciones dentro de filas de tabla (Editar/Retirar). */
+.btn-sm {
+  min-height: 32px;
+  padding: 0 0.7rem;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 767.98px) {
+  .btn {
+    min-height: 44px;
+  }
+}
+
+/* -----------------------------------------------------------------------
+   Tarjeta blanca genérica: la usan el catálogo y el detalle de programa
+   para compartir la misma superficie.
+   -------------------------------------------------------------------- */
+.tarjeta-superficie {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}
+
+/* Texto de los estados "vacío"/"cargando": discreto, sin alarmar. */
+.texto-discreto {
+  color: var(--color-texto-secundario);
+}
+
+/* Chip informativo (usado en programa-detalle para tipo/nivel/ciudad). */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radio-chip);
+  background: var(--color-primario-suave);
+  color: var(--color-primario);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
