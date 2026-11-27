@@ -10,6 +10,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { ApiError, RespuestaCreacion, RespuestaLista } from '../models/catalogo';
+import { RespuestaLogin } from '../models/auth';
 
 export interface RespuestaExitoBasica {
   estado: number;
@@ -28,6 +29,14 @@ export class ApiService {
   private readonly apiUrl = environment.apiUrl;
 
   constructor(private readonly http: HttpClient) {}
+
+  // POST /api/login: recibe el JWT y traduce el 401 al mismo ApiError que el
+  // resto de la aplicación, para que el login muestre el mensaje real.
+  iniciarSesion(username: string, password: string): Observable<RespuestaLogin> {
+    return this.http
+      .post<RespuestaLogin>(`${this.apiUrl}/api/login`, { username, password })
+      .pipe(catchError((error: HttpErrorResponse) => this.manejarError(error)));
+  }
 
   // GET /api/{tabla}?limite=N (RF1). 200 -> envoltura; 204 -> null (tabla vacia).
   listar<T>(tabla: string, limite = 1000): Observable<RespuestaLista<T> | null> {

@@ -12,6 +12,17 @@
   font-size: 1.5rem;
 }
 
+.titulo-catalogo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.titulo-catalogo h1 {
+  margin: 0;
+}
+
 .fila-acciones {
   display: flex;
   align-items: center;

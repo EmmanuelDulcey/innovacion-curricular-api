@@ -44,13 +44,22 @@
       <span>Exportar</span>
     </button>
 
-    <!-- Usuario: TODO v3: tomar del token cuando exista login -->
+    <!-- Usuario real de la sesión + salida -->
     <div class="usuario">
-      <span class="avatar" aria-hidden="true">{{ usuario.iniciales }}</span>
+      <span class="avatar" aria-hidden="true">{{ usuario().iniciales }}</span>
       <span class="usuario-texto">
-        <strong>{{ usuario.nombre }}</strong>
-        <small>{{ usuario.rol }}</small>
+        <strong>{{ usuario().nombre }}</strong>
+        <small>{{ usuario().rol }}</small>
       </span>
+      <button
+        type="button"
+        class="btn-salir"
+        aria-label="Cerrar sesión"
+        title="Cerrar sesión"
+        (click)="cerrarSesion()"
+      >
+        <app-icono nombre="log-out" [tamano]="18" />
+      </button>
     </div>
   </div>
 </header>

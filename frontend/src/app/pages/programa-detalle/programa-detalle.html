@@ -7,6 +7,9 @@
     <header class="cabecera">
       <div>
         <h1>{{ prog['nombre'] }}</h1>
+        @if (!puedeEscribir()) {
+          <span class="chip">Solo lectura</span>
+        }
         <!-- Datos del programa como chips (clase .chip de styles.css), en vez
              de texto corrido separado por "·". -->
         <p class="sub">
@@ -59,9 +62,11 @@
                       <td>{{ valorTexto(fila, campo) }}</td>
                     }
                     <td class="acciones">
-                      <button type="button" class="btn-eliminar" (click)="retirarDeSeccion(seccion, fila)">
-                        Retirar
-                      </button>
+                      @if (puedeEscribir()) {
+                        <button type="button" class="btn-eliminar" (click)="retirarDeSeccion(seccion, fila)">
+                          Retirar
+                        </button>
+                      }
                     </td>
                   </tr>
                 }
@@ -70,7 +75,7 @@
           </div>
         }
 
-        @if ((borradores()[seccion.tabla] ?? []).length > 0) {
+        @if (puedeEscribir() && (borradores()[seccion.tabla] ?? []).length > 0) {
           <form (ngSubmit)="guardarRenglones(seccion)">
             @for (fila of borradores()[seccion.tabla]; track $index) {
               <div class="renglon">
@@ -138,11 +143,13 @@
           </form>
         }
 
-        <div class="acciones-seccion">
-          <button type="button" class="btn-cancelar" (click)="agregarRenglon(seccion)">
-            + Agregar renglón
-          </button>
-        </div>
+        @if (puedeEscribir()) {
+          <div class="acciones-seccion">
+            <button type="button" class="btn-cancelar" (click)="agregarRenglon(seccion)">
+              + Agregar renglón
+            </button>
+          </div>
+        }
       </section>
     }
 

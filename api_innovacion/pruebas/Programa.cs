@@ -691,6 +691,7 @@ public static class Programa
             await ProbarEnfoqueRc();
             await ProbarAaRc();
             _contador += await PruebasRelacionesFelipe.EjecutarAsync();
+            _contador += await PruebasAutenticacion.EjecutarAsync();
 
             Console.WriteLine($"Prueba de capas SUPERADA: {_contador} verificaciones en verde.");
             return 0;

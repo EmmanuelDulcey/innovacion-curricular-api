@@ -5,7 +5,12 @@
      ======================================================================= -->
 <section class="catalogo">
   <header class="cabecera">
-    <h1>{{ config()?.nombreLegible ?? tabla() }}</h1>
+    <div class="titulo-catalogo">
+      <h1>{{ config()?.nombreLegible ?? tabla() }}</h1>
+      @if (!puedeEscribir()) {
+        <span class="chip">Solo lectura</span>
+      }
+    </div>
     <div class="fila-acciones">
       <input
         type="search"
@@ -23,7 +28,7 @@
           (ngModelChange)="cambiarLimite($event)"
         />
       </label>
-      @if (config()) {
+      @if (config() && puedeEscribir()) {
         <!-- En una relación la acción de alta es asignar la pareja (§8). -->
         <button class="btn-crear" (click)="abrirCrear()">
           {{ esCompuesta() ? '+ Asignar' : '+ Nuevo' }}
@@ -68,18 +73,23 @@
                 </span>
               </td>
               <td class="acciones">
-                @if (!puedeEditar()) {
-                  <!-- Puentes puras: la pareja solo se asigna y se retira. -->
-                  <button class="btn-eliminar" (click)="eliminar(fila)">Retirar</button>
-                } @else {
-                  @if (config()!.nombre === 'programa') {
-                    <!-- Maestro-detalle: abre la pantalla del programa. -->
-                    <a class="btn-detalle" [routerLink]="['/programas', fila['id']]">Detalle</a>
+                @if (puedeEscribir()) {
+                  @if (!puedeEditar()) {
+                    <!-- Puentes puras: la pareja solo se asigna y se retira. -->
+                    <button class="btn-eliminar" (click)="eliminar(fila)">Retirar</button>
+                  } @else {
+                    @if (config()!.nombre === 'programa') {
+                      <!-- Maestro-detalle: abre la pantalla del programa. -->
+                      <a class="btn-detalle" [routerLink]="['/programas', fila['id']]">Detalle</a>
+                    }
+                    <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
+                    <button class="btn-eliminar" (click)="eliminar(fila)">
+                      {{ esCompuesta() ? 'Retirar' : 'Eliminar' }}
+                    </button>
                   }
-                  <button class="btn-editar" (click)="abrirEditar(fila)">Editar</button>
-                  <button class="btn-eliminar" (click)="eliminar(fila)">
-                    {{ esCompuesta() ? 'Retirar' : 'Eliminar' }}
-                  </button>
+                } @else if (config()!.nombre === 'programa') {
+                  <!-- Un usuario de solo lectura igual puede abrir el detalle. -->
+                  <a class="btn-detalle" [routerLink]="['/programas', fila['id']]">Detalle</a>
                 }
               </td>
             </tr>
