@@ -109,7 +109,17 @@ curl -i -X POST http://localhost:8036/api/auth/logout \
   -H "Authorization: Bearer $TOKEN_ADMIN"
 ```
 
-→ 200 `{"estado":200,"mensaje":"Sesión cerrada."}`.
+→ 200 `{"estado":200,"mensaje":"Sesión cerrada."}`. Ese mismo token queda
+**revocado**: reutilizarlo en cualquier ruta, incluso antes de que expire,
+ahora falla:
+
+```bash
+curl -i http://localhost:8036/api/auth/me -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+
+→ **401**, sin cuerpo (igual que un token vencido). Vuelve a iniciar
+sesión para obtener un `$TOKEN_ADMIN` nuevo antes de continuar con los
+siguientes pasos.
 
 ## 5. Smoke test — autorización por rol (403)
 

@@ -47,7 +47,7 @@ Se agrega a la matriz de [`../v2/6_contracts.md`](../v2/6_contracts.md) §0.6:
 | Situación | HTTP |
 |---|---|
 | Usuario autenticado sin rol de escritura intenta POST/PUT/PATCH/DELETE | **403** |
-| Sin token en una ruta protegida, o token inválido/expirado | **401** |
+| Sin token en una ruta protegida, o token inválido/expirado/**revocado por logout** | **401** |
 | Más de 10 intentos de login por minuto desde la misma IP | **429** |
 
 ---
@@ -153,7 +153,21 @@ Authorization: Bearer <token>
 { "estado": 200, "mensaje": "Sesión cerrada." }
 ```
 
-El servidor no invalida el token (JWT sin estado); el cliente lo descarta.
+El servidor **revoca** el `jti` de ese token (lo agrega a la lista negra
+`token_revocado`). Reutilizar el **mismo** token después, en cualquier
+ruta —incluido otro `POST /api/auth/logout`, o `GET /api/auth/me`—,
+responde **401** (mismo formato vacío que §5), aunque la firma y la
+expiración del token sigan siendo válidas:
+
+```http
+GET /api/auth/me
+Authorization: Bearer <token-ya-cerrado-por-logout>
+```
+
+```http
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer
+```
 
 ---
 
@@ -227,4 +241,6 @@ la regla de escritura por rol.
 2. El 401 de login nunca distingue el motivo exacto.
 3. 403 es **por rol**, no por ausencia de token (eso es 401).
 4. 429 protege el login, no el resto de la API.
-5. Ningún contrato de las 22 tablas de v1/v2 cambia en esta versión.
+5. `POST /api/auth/logout` **revoca** el token: reutilizarlo después → 401,
+   igual que uno vencido.
+6. Ningún contrato de las 22 tablas de v1/v2 cambia en esta versión.

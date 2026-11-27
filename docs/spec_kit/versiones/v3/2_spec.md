@@ -40,15 +40,23 @@ esta versión, **toda ruta exige sesión** (salvo `POST /api/login` y
 
 ## 2. Alcance
 
-**Incluye (lo que ya está mergeado en `rama-valentina`):**
-
 - `POST /api/login`: valida usuario + contraseña contra el hash **bcrypt**
   guardado en `usuario.password` y devuelve un **JWT HS256** con el usuario y
   sus roles vigentes.
 - `GET /api/auth/me`: devuelve la sesión activa a partir de los claims del
   token (sin volver a tocar la base).
-- `POST /api/auth/logout`: cierra la sesión del lado del cliente (JWT sin
-  estado: no hay tabla de sesiones que invalidar en el servidor).
+- `POST /api/auth/logout`: **revoca** el token actual (su `jti` queda en la
+  lista negra `token_revocado`). A partir de ese momento, ese mismo token
+  deja de servir en **cualquier** ruta —incluida `GET /api/auth/me`—, aunque
+  su firma y su expiración sigan siendo válidas.
+- **Expiración** de sesión: cada JWT expira a los `Jwt:ExpirationMinutes`
+  (480 por defecto); el pipeline de autenticación lo valida en cada petición
+  (`ValidateLifetime = true`).
+- **Revocación** de sesión: `IServicioRevocacionToken` +
+  `IRepositorioTokenRevocado` (lista negra en `token_revocado`, por
+  procedimientos). `OnTokenValidated` del `AddJwtBearer` consulta esa lista
+  en cada petición autenticada; si el `jti` está revocado, falla la
+  autenticación → **401**, igual que un token vencido.
 - Middleware de **autorización por rol en escritura**: `POST`/`PUT`/`PATCH`/
   `DELETE` de cualquier tabla de v1/v2 responde **403** si el usuario
   autenticado no tiene un rol habilitado para escribir. `GET`/`HEAD`/`OPTIONS`
@@ -60,6 +68,8 @@ esta versión, **toda ruta exige sesión** (salvo `POST /api/login` y
 - Script `db/09_seguridad_v3.sql`: procedimientos
   `sp_consultar_usuario_por_username` y `sp_listar_roles_usuario`, y
   migración de las contraseñas de demostración de texto plano a bcrypt.
+- Script `db/10_revocacion_tokens_v3.sql`: tabla `token_revocado` y los
+  procedimientos `sp_revocar_token` / `sp_token_revocado`.
 - Seeders (`db/08_seeders.sql`): 5 roles (`Administrador`, `Coordinador
   académico`, `Docente`, `Secretaría académica`, `Consulta`) y 5 usuarios de
   demostración, uno por rol, con la contraseña `Demo123!` (hasheada).
@@ -80,9 +90,13 @@ esta versión, **toda ruta exige sesión** (salvo `POST /api/login` y
   controlador/servicio/repositorio de gestión de usuarios y su pantalla
   admin. Se deja como siguiente incremento de esta misma versión (no se abre
   la v4 sin esto).
-- Expiración/revocación de sesión más allá de la expiración natural del JWT
-  (480 minutos por defecto, `Jwt:ExpirationMinutes`). No hay lista negra de
-  tokens ni refresh token.
+- **Limpieza de `token_revocado`.** La tabla solo crece (cada logout agrega
+  una fila); no hay un job que purgue los `jti` ya vencidos. Para el volumen
+  de un proyecto de aula no es un problema; si se requiriera, el candidato
+  es borrar filas cuyo token ya expiró (no se guarda `expira` todavía — ver
+  [5_data_model.md](5_data_model.md) §5).
+- **Refresh token.** No hay renovación automática de sesión: al expirar (o
+  al ser revocado), el usuario debe volver a iniciar sesión.
 - Reactivar un usuario inactivo desde la interfaz (no hay pantalla de
   usuarios todavía — ver punto anterior).
 - Cualquier cambio a las 22 tablas de v1/v2 o a sus contratos: siguen
@@ -122,6 +136,21 @@ endpoint de login (por mensaje distinto o por diferencia de tiempo).
 `"desconocido"` compartida si no se puede resolver la IP (nunca una ventana
 global que bloquee a todos los usuarios por igual).
 
+### 3.4 Cómo revocar un JWT antes de que expire
+
+**Decisión: lista negra de `jti` en base de datos (tabla `token_revocado`),
+consultada en cada petición autenticada.**
+
+Un JWT es, por diseño, válido hasta que expira — el servidor no "recuerda"
+haberlo emitido. Para que `POST /api/auth/logout` cierre la sesión de
+verdad (no solo le pida al cliente que borre el token), hace falta algo que
+el servidor sí recuerde: qué tokens fueron cerrados antes de su hora.
+`OnTokenValidated` (evento del `AddJwtBearer`) consulta esa lista en cada
+petición, después de validar firma y expiración (lo más barato primero); si
+el `jti` está en la lista, la autenticación falla con 401. Ver
+[4_research.md](4_research.md) D1 para las alternativas descartadas
+(revocación en memoria, acortar el JWT con refresh token).
+
 ---
 
 ## 4. Requisitos funcionales
@@ -137,9 +166,16 @@ intentos/minuto por IP → **429**.
 del usuario reconstruidos desde los **claims** del JWT (no vuelve a SQL
 Server). Sin token o token expirado/inválido → **401**.
 
-### RF3 — Cerrar sesión
-`POST /api/auth/logout` (autenticado) → 200. No invalida el token en el
-servidor (JWT sin estado); el cliente debe descartarlo.
+### RF3 — Cerrar sesión (revocación real)
+`POST /api/auth/logout` (autenticado) → 200 y **revoca** el `jti` del token
+usado en la petición. Ese mismo token, reutilizado después en cualquier
+ruta (incluido otro `POST /api/auth/logout`), responde **401** — el logout
+ya no depende de que el cliente "se porte bien" y lo borre.
+
+### RF3.1 — Expiración natural
+Independientemente de que se cierre sesión, un JWT deja de ser válido a los
+`Jwt:ExpirationMinutes` (480 por defecto) de haberse emitido. Un token
+vencido responde **401** aunque nunca se haya revocado explícitamente.
 
 ### RF4 — Autorización por rol en escrituras
 Cualquier `POST`/`PUT`/`PATCH`/`DELETE` de las 22 tablas de v1/v2, hecho por
@@ -180,8 +216,12 @@ barrera real es RF4.
 - **Capas:** el controlador no valida roles ni toca JWT directamente (lo hace
   el middleware/`[Authorize]`); el servicio de autenticación no conoce HTTP;
   el repositorio de usuario solo consulta por procedimientos almacenados.
-- **Cero SQL a mano:** `sp_consultar_usuario_por_username` y
-  `sp_listar_roles_usuario`, igual que las tablas de la v2.
+- **Cero SQL a mano:** `sp_consultar_usuario_por_username`,
+  `sp_listar_roles_usuario`, `sp_revocar_token` y `sp_token_revocado`,
+  igual que las tablas de la v2.
+- **Revocación barata:** la consulta a `token_revocado` se hace **después**
+  de validar firma y expiración del JWT (lo gratis primero); solo toca la
+  base en peticiones que ya pasaron esa validación.
 - **Un solo lugar para la regla de roles:** `PoliticaRoles` en el backend;
   el Frontend la replica solo para UI, no para seguridad.
 - **Sin anticipar v4:** no hay consultas multitabla ni gráficos nuevos en
@@ -211,7 +251,9 @@ barrera real es RF4.
    guardada.
 9. 11 intentos de login en menos de un minuto desde la misma IP → el 11.º
    responde **429**.
-10. La regresión de v1 y v2 sigue en verde (ver [9_checklist.md](9_checklist.md) §D).
+10. Tras `POST /api/auth/logout`, reutilizar el **mismo** token en cualquier
+    ruta (incluido `GET /api/auth/me`) → **401**.
+11. La regresión de v1 y v2 sigue en verde (ver [9_checklist.md](9_checklist.md) §D).
 
 **Pendiente para cerrar la v3 por completo** (ver §2 "No incluye"): CRUD de
 `usuario`/`rol`/`rol_usuario` para administradores. Mientras no esté, el tag
@@ -231,7 +273,8 @@ no el cierre de la versión.
 4. La regla de roles se evalúa en la **API** (autoridad final); el Frontend
    solo la refleja para ocultar botones.
 5. Toda ruta exige sesión salvo `POST /api/login` y `GET /`.
-6. El JWT no tiene estado en el servidor: cerrar sesión es una acción del
-   cliente.
-7. El secreto del JWT viene de una variable de entorno, nunca del código.
-8. Ninguna tabla ni contrato de v1/v2 cambia en esta versión.
+6. Cerrar sesión **revoca** el token en el servidor (`token_revocado`); no
+   depende de que el cliente lo borre.
+7. Un token revocado o vencido se rechaza igual, con el mismo 401.
+8. El secreto del JWT viene de una variable de entorno, nunca del código.
+9. Ninguna tabla ni contrato de v1/v2 cambia en esta versión.

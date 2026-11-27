@@ -6,8 +6,8 @@
 > [7_quickstart.md](7_quickstart.md) · cierre: [9_checklist.md](9_checklist.md).
 >
 > Este documento refleja el trabajo **ya hecho** en `rama-valentina`
-> (Fases 0 a 4) y deja explícita la Fase 5, **pendiente**, antes de poder
-> poner el tag `v3`.
+> (Fases 0, 1, 1.1, 2, 3 y 4) y deja explícita la Fase 5, **pendiente**,
+> antes de poder poner el tag `v3`.
 
 ---
 
@@ -18,6 +18,8 @@
 - [x] `db/09_seguridad_v3.sql`: `sp_consultar_usuario_por_username`,
   `sp_listar_roles_usuario` y la migración idempotente de las contraseñas
   de demostración a bcrypt.
+- [x] `db/10_revocacion_tokens_v3.sql`: tabla `token_revocado` +
+  `sp_revocar_token` / `sp_token_revocado` (revocación de sesión).
 - [x] Seeders de `rol` y `usuario` en `db/08_seeders.sql` (5 roles, 5
   usuarios, sus filas en `rol_usuario`).
 - [x] Actualizar `db/init.sh` para correr `09_seguridad_v3.sql` después de
@@ -41,12 +43,28 @@
 - [x] `Respuestas/RespuestasAuth.cs` (`RespuestaLogin`,
   `UsuarioAutenticadoRespuesta`).
 - [x] `Controllers/AuthController.cs`: `POST /api/login`,
-  `GET /api/auth/me`, `POST /api/auth/logout`.
+  `GET /api/auth/me`, `POST /api/auth/logout` (revoca el token — ver Fase 1.1).
 - [x] `Program.cs`: configuración de `AddAuthentication().AddJwtBearer(...)`,
   política de respaldo `RequireAuthenticatedUser`, `AddRateLimiter` (10/min
   por IP en `/api/login`), DI de las piezas nuevas.
 - **Verificado:** smoke test de login/sesión por `curl`
   ([7_quickstart.md](7_quickstart.md) §3-4).
+
+## Fase 1.1 — Expiración y revocación de sesión (Valentina)
+
+- [x] `Repositorios/IRepositorioTokenRevocado.cs` +
+  `RepositorioTokenRevocadoSqlServer.cs` (solo `CommandType.StoredProcedure`).
+- [x] `Servicios/IServicioRevocacionToken.cs` + `ServicioRevocacionToken.cs`.
+- [x] `AuthController.Logout`: lee el claim `jti` del token actual y lo
+  revoca antes de responder 200.
+- [x] `Program.cs`: `AddJwtBearer(...).Events.OnTokenValidated` consulta
+  `IServicioRevocacionToken.EstaRevocadoAsync(jti)` en cada petición
+  autenticada; si está revocado, `contexto.Fail(...)` → 401.
+- [x] DI: `IRepositorioTokenRevocado` y `IServicioRevocacionToken` como
+  `Scoped` (ver [3_plan.md](3_plan.md) §5).
+- **Verificado:** smoke test login → logout → reusar el mismo token → 401
+  ([7_quickstart.md](7_quickstart.md) §4); la expiración natural (480 min)
+  ya estaba cubierta desde la Fase 1 (`ValidateLifetime = true`).
 
 ## Fase 2 — Autorización por rol en escritura (Valentina)
 
@@ -65,8 +83,11 @@
   correcta/incorrecta, hash malformado no rompe), login correcto, los tres
   rechazos 401 (contraseña, usuario inexistente, usuario inactivo), los dos
   rechazos 400 (vacío, contraseña > 72 bytes), usuario sin rol (se autentica
-  pero no escribe), la política de roles para los 5 roles, y la emisión real
-  de un JWT (3 partes, claims, expiración futura).
+  pero no escribe), la política de roles para los 5 roles, la emisión real
+  de un JWT (3 partes, claims, expiración futura) y la revocación
+  (`ServicioRevocacionToken` con un repositorio falso en memoria: un jti
+  recién emitido no está revocado, revocarlo lo marca, no afecta a otro jti,
+  y revocar dos veces no falla).
 - **Verificado:** `pruebas/Programa.cs` ejecuta
   `PruebasAutenticacion.EjecutarAsync()` junto con las pruebas de v1/v2 y
   reporta todo en verde.

@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApiInnovacion.Excepciones;
 using ApiInnovacion.Modelos;
@@ -13,19 +14,23 @@ namespace ApiInnovacion.Controllers;
 
 /// <summary>
 /// Autenticación de la v3: `POST /api/login` emite el JWT; `GET /api/auth/me`
-/// devuelve la sesión a partir de los claims y `POST /api/auth/logout` cierra
-/// la sesión del lado del cliente. Los errores de credenciales son 401
-/// genéricos; los fallos del motor nunca filtran detalles internos.
+/// devuelve la sesión a partir de los claims y `POST /api/auth/logout` la
+/// revoca (ver <see cref="IServicioRevocacionToken"/>): a partir de ese
+/// momento el mismo token deja de servir en cualquier ruta, aunque no haya
+/// expirado. Los errores de credenciales son 401 genéricos; los fallos del
+/// motor nunca filtran detalles internos.
 /// </summary>
 [ApiController]
 [Route("api")]
 public class AuthController : ControllerBase
 {
     private readonly IServicioAutenticacion _servicio;
+    private readonly IServicioRevocacionToken _revocacion;
 
-    public AuthController(IServicioAutenticacion servicio)
+    public AuthController(IServicioAutenticacion servicio, IServicioRevocacionToken revocacion)
     {
         _servicio = servicio;
+        _revocacion = revocacion;
     }
 
     [HttpPost("login")]
@@ -102,11 +107,16 @@ public class AuthController : ControllerBase
 
     [HttpPost("auth/logout")]
     [Authorize]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout()
     {
-        // JWT sin estado: el servidor no guarda sesiones. El cliente descarta el
-        // token; el endpoint existe para que el flujo de salida sea explícito y
-        // para poder auditar la intención de cierre.
+        // Revoca el jti del token actual: a partir de aquí, OnTokenValidated
+        // (Program.cs) lo rechaza en cualquier ruta aunque su firma y su
+        // expiración sigan siendo válidas. Un token sin jti (no debería pasar
+        // con ServicioTokenJwt) simplemente no se puede revocar.
+        var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
+        if (!string.IsNullOrEmpty(jti))
+            await _revocacion.RevocarAsync(jti);
+
         return Ok(new RespuestaExito
         {
             Estado = StatusCodes.Status200OK,

@@ -18,11 +18,44 @@
 
 **Decisión: JWT sin estado (HS256), expiración de 480 minutos.**
 
-**Consecuencia aceptada:** `POST /api/auth/logout` no invalida el token en
-el servidor; solo le indica al cliente que lo descarte. Si un token robado
-sigue siendo válido, funciona hasta que expire — no hay revocación. Esto se
-documenta como limitación conocida (ver [2_spec.md](2_spec.md) §2
-"No incluye").
+**Consecuencia que había quedado aceptada, y que ya no aplica:** en la
+primera entrega de la v3, `POST /api/auth/logout` no invalidaba el token en
+el servidor — solo le indicaba al cliente que lo descartara. Un token
+robado seguía funcionando hasta expirar. Esa limitación se cerró con D1.1
+(abajo): se agregó una revocación explícita **sin** volver a una sesión con
+estado completo (no hay tabla `sesion` con todos los datos de la sesión,
+solo una lista negra de `jti`).
+
+## D1.1 — Revocar sin volver a sesiones con estado completo
+
+**Contexto.** D1 eligió JWT sin estado para no pagar una consulta a la base
+en **cada** petición solo para confirmar que la sesión sigue "viva". Pero un
+logout que de verdad revoque el token sí necesita que el servidor recuerde
+*algo*. ¿Cuánto?
+
+| Opción | Comentario |
+|---|---|
+| Revocar en memoria (`HashSet<string>` en un singleton) | Más simple, pero se pierde al reiniciar la API (`dotnet watch` recompila en cada guardado) y no se comparte si hubiera más de una instancia — descartada |
+| Acortar el JWT y usar **refresh token** | Resuelve el problema de otra forma (sesiones cortas, renovadas), pero agrega un endpoint, un segundo token y su propio almacenamiento — desproporcionado para lo que se pidió (revocar el logout) |
+| **Lista negra de `jti` en base de datos** (tabla `token_revocado`) | Un solo `INSERT` en el logout; una sola consulta por `jti` en cada petición (después de validar firma/expiración, que es gratis); persiste entre reinicios de la API |
+
+**Decisión: lista negra en base de datos.** Es el cambio más chico que
+cierra el hueco real (un logout que no revoca nada no es un logout) sin
+reabrir el diseño de D1. El repositorio (`IRepositorioTokenRevocado`) y el
+servicio (`IServicioRevocacionToken`) siguen el mismo patrón de capas que
+`usuario`: cero SQL fuera de los procedimientos
+(`sp_revocar_token`/`sp_token_revocado`).
+
+**Dónde se conecta con el pipeline:** `AddJwtBearer(...).Events.OnTokenValidated`
+corre **después** de que el middleware ya validó firma, emisor, audiencia y
+expiración — la consulta a `token_revocado` solo se paga en peticiones que
+ya pasaron esa validación más barata. Ver [3_plan.md](3_plan.md) §3.
+
+**Lo que esto NO resuelve** (fuera de alcance, ver
+[2_spec.md](2_spec.md) §2): revocar **todas** las sesiones de un usuario a
+la vez (ej. al cambiar su contraseña) — eso exigiría guardar el `usuario_id`
+junto al `jti`, no solo el `jti`; y la limpieza de `token_revocado` cuando
+el token ya hubiera expirado de todas formas (la tabla solo crece).
 
 ## D2 — bcrypt para contraseñas
 

@@ -11,7 +11,7 @@
 ## A. Autenticación
 
 - [ ] `docker compose up -d --build` levanta todo; `db/09_seguridad_v3.sql`
-  corre sin error tras los seeders.
+  y `db/10_revocacion_tokens_v3.sql` corren sin error tras los seeders.
 - [ ] `SELECT LEFT(password, 4) FROM usuario` empieza por `$2a$` en los 5
   usuarios de demostración (contraseñas migradas a bcrypt).
 - [ ] `POST /api/login` con `admin`/`Demo123!` → 200, token con 3 partes,
@@ -29,6 +29,11 @@
   roles.
 - [ ] `GET /api/auth/me` sin token, o con token expirado/alterado → **401**.
 - [ ] `POST /api/auth/logout` con token → 200.
+- [ ] **Tras el logout, reutilizar el mismo token** en `GET /api/auth/me` (o
+  cualquier otra ruta) → **401** (revocación real, no solo "confía en que el
+  cliente lo borre").
+- [ ] Revocar un token no afecta a **otro** token válido de la misma sesión
+  o de otro usuario.
 - [ ] Cualquier ruta de las 22 tablas, sin header `Authorization` → **401**.
 - [ ] `GET /` (diagnóstico) sigue respondiendo **sin** token.
 

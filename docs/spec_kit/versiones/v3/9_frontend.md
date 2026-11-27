@@ -98,6 +98,11 @@ Usa `Injector` (no `inject(AuthService)` directo) para resolver
 `AuthService` dentro del manejador de errores y evitar un ciclo
 `HttpClient → interceptor → AuthService → HttpClient`.
 
+No necesitó cambios para la revocación de sesión del backend (ver
+[2_spec.md](2_spec.md) §3.4): un token revocado por logout responde 401
+igual que uno vencido, así que el mismo manejo de 401 de arriba ya cubre
+ambos casos sin lógica adicional en el Frontend.
+
 ## 6. Guardias de ruta
 
 ```ts

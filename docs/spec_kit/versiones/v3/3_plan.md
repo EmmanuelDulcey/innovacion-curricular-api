@@ -19,7 +19,7 @@ La v3 **no cambia** el stack de v1/v2; agrega dos paquetes para autenticación.
 | **Nuevo:** hash de contraseñas | `BCrypt.Net-Next` 4.0.3, work factor 12 | Estándar para contraseñas (Art. 10 de la constitución); sal aleatoria por hash |
 | **Nuevo:** JWT | `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.15, HS256 | Autenticación sin estado en el servidor |
 | **Nuevo:** rate limiting | `Microsoft.AspNetCore.RateLimiting` (incluido en el SDK) | Limitar intentos de login por IP |
-| Motor | SQL Server 2022 (mismo contenedor) | `usuario`, `rol`, `rol_usuario` ya existían en el script base, sin usar hasta ahora |
+| Motor | SQL Server 2022 (mismo contenedor) | `usuario`, `rol`, `rol_usuario` ya existían en el script base, sin usar hasta ahora; `token_revocado` es nueva (lista negra de logout) |
 | Frontend | Angular (TypeScript), *standalone*, `HttpClient` | Igual que v1/v2; se agrega un `HttpInterceptorFn` |
 
 ## 2. Configuración y secretos
@@ -57,8 +57,14 @@ UseCors            →  UseRateLimiter       →  UseAuthentication
 2. **Rate limiter**: protege `POST /api/login` (10/min/IP) antes de que
    cualquier otra cosa procese la petición.
 3. **Authentication**: valida el JWT (firma, emisor, audiencia, expiración)
-   y puebla `HttpContext.User` con los claims. No decide si la ruta
-   **requiere** sesión; solo identifica si hay una válida.
+   y puebla `HttpContext.User` con los claims. Además, en su evento
+   `OnTokenValidated`, consulta si el `jti` del token está en la lista
+   negra de revocados (`IServicioRevocacionToken`, resuelto desde
+   `HttpContext.RequestServices` porque este código vive fuera de la
+   cadena de inyección normal de un controlador); si lo está,
+   `contexto.Fail(...)` y la petición queda como **no autenticada** (401),
+   igual que un token con firma inválida. No decide si la ruta **requiere**
+   sesión; solo identifica si hay una válida.
 4. **Authorization**: aplica la **política de respaldo**
    (`RequireAuthenticatedUser`), que exige sesión en toda ruta salvo las
    marcadas `[AllowAnonymous]`. Sin sesión válida → 401 aquí, antes de
@@ -99,13 +105,16 @@ builder.Services.AddSingleton<IServicioHashContrasena, ServicioHashContrasena>()
 builder.Services.AddSingleton<ITokenJwt, ServicioTokenJwt>();
 builder.Services.AddScoped<IRepositorioUsuario>(_ => new RepositorioUsuarioSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioAutenticacion, ServicioAutenticacion>();
+
+builder.Services.AddScoped<IRepositorioTokenRevocado>(_ => new RepositorioTokenRevocadoSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioRevocacionToken, ServicioRevocacionToken>();
 ```
 
 El hasher y el emisor de JWT son **singleton**: no guardan estado por
 petición (bcrypt genera su propia sal en cada llamada; el emisor solo lee la
-configuración). El repositorio y el servicio de autenticación son
-**scoped**, igual que el resto de repositorios/servicios de v1/v2 (abren su
-propia conexión por petición).
+configuración). El repositorio y el servicio de autenticación, y los de
+revocación, son **scoped**, igual que el resto de repositorios/servicios de
+v1/v2 (abren su propia conexión por petición).
 
 ## 6. Estructura de carpetas (solo lo nuevo de la v3)
 
@@ -117,15 +126,18 @@ api_innovacion/
 ├── Middlewares/RestringirEscrituraMiddleware.cs
 ├── Modelos/{Usuario.cs, SesionUsuario.cs}
 ├── Peticiones/LoginPeticion.cs
-├── Repositorios/{IRepositorioUsuario.cs, RepositorioUsuarioSqlServer.cs}
+├── Repositorios/{IRepositorioUsuario.cs, RepositorioUsuarioSqlServer.cs,
+│                 IRepositorioTokenRevocado.cs, RepositorioTokenRevocadoSqlServer.cs}
 ├── Respuestas/RespuestasAuth.cs
 ├── Seguridad/PoliticaRoles.cs
 ├── Servicios/{IServicioAutenticacion.cs, ServicioAutenticacion.cs,
 │              IServicioHashContrasena.cs, ServicioHashContrasena.cs,
-│              ITokenJwt.cs, ServicioTokenJwt.cs}
+│              ITokenJwt.cs, ServicioTokenJwt.cs,
+│              IServicioRevocacionToken.cs, ServicioRevocacionToken.cs}
 └── pruebas/PruebasAutenticacion.cs
 
-db/09_seguridad_v3.sql        # procedimientos + migración de contraseñas
+db/09_seguridad_v3.sql              # procedimientos + migración de contraseñas
+db/10_revocacion_tokens_v3.sql      # lista negra de jti (logout real)
 
 frontend/src/app/
 ├── guards/{auth.guard.ts, invitado.guard.ts}

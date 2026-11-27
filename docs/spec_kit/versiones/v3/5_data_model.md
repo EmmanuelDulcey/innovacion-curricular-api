@@ -1,24 +1,27 @@
 # Modelo de datos — Versión 3: control de acceso
 
-> **Versión 3** · Las 3 tablas de este módulo **ya existían** en el script
-> base (`db/innovacion_curricular.ss.sql`), sin usar hasta esta versión. La
-> v3 no crea tablas nuevas: agrega los **procedimientos** para consultarlas
-> y **migra** las contraseñas de demostración a bcrypt
-> (`db/09_seguridad_v3.sql`).
+> **Versión 3** · Las 3 tablas `usuario`/`rol`/`rol_usuario` **ya existían**
+> en el script base (`db/innovacion_curricular.ss.sql`), sin usar hasta esta
+> versión. La v3 agrega los **procedimientos** para consultarlas, **migra**
+> las contraseñas de demostración a bcrypt (`db/09_seguridad_v3.sql`) y
+> suma **una tabla nueva**, `token_revocado`, para la revocación de sesión
+> (`db/10_revocacion_tokens_v3.sql`).
 
 ---
 
 ## 1. Dónde encajan estas tablas en la base completa
 
-`innovacion_curricular` tiene **26 tablas** en dos módulos. v1 opera las 7
-sin FK, v2 opera las 15 con FK más el catálogo `docente`. Las 3 restantes
-son el módulo de usuarios, que la v3 activa:
+`innovacion_curricular` tenía **26 tablas** en dos módulos antes de la v3.
+v1 opera las 7 sin FK, v2 opera las 15 con FK más el catálogo `docente`. Las
+3 restantes son el módulo de usuarios, que la v3 activa. La v3 además
+**agrega una tabla nueva** (`token_revocado`, 27.ª), propia de esta versión
+y sin relación de FK con el resto:
 
 ```
-INNOVACIÓN CURRICULAR (23, v1/v2)         USUARIOS (3, esta versión)
-──────────────────────────────            ──────────────────────────
-(sin cambios en v3)                       usuario ──┐
-                                                     ├─ rol_usuario ──> rol
+INNOVACIÓN CURRICULAR (23, v1/v2)         USUARIOS (3)                  SESIÓN (1, nueva)
+──────────────────────────────            ──────────────────────────    ─────────────────
+(sin cambios en v3)                       usuario ──┐                   token_revocado
+                                                     ├─ rol_usuario ──> rol  (sin FK)
 ```
 
 ## 2. `rol`
@@ -56,9 +59,26 @@ Un usuario puede tener **0, 1 o varios** roles (el JWT incluye un claim
 igual, pero no puede escribir (ver [2_spec.md](2_spec.md) §3.1) —
 comprobado en `PruebasAutenticacion.cs` con el usuario `sinrol`.
 
-## 5. Procedimientos nuevos (`db/09_seguridad_v3.sql`)
+## 5. `token_revocado` (tabla nueva, revocación de sesión)
 
-### 5.1 `sp_consultar_usuario_por_username`
+| Columna | Tipo | Regla | Notas |
+|---|---|---|---|
+| `jti` | `VARCHAR(50)` | **PK** | El claim `jti` del JWT (un GUID, 36 caracteres) |
+| `fecha_revocacion` | `DATETIME` | `DEFAULT GETDATE()` | Cuándo se cerró esa sesión |
+
+Sin FK a `usuario`: el `jti` por sí solo identifica un token, no hace falta
+saber de quién es para rechazarlo. Un `jti` presente aquí es un JWT que
+**ya no debe aceptarse**, aunque su firma y su expiración sigan siendo
+válidas (ver [4_research.md](4_research.md) D1.1).
+
+> **Limitación conocida:** no guarda la expiración del token, así que no
+> hay una consulta trivial para purgar filas de tokens que de todas formas
+> ya vencieron — la tabla solo crece. Aceptable para el volumen de un
+> proyecto de aula; ver [2_spec.md](2_spec.md) §2.
+
+## 6. Procedimientos nuevos (`db/09_seguridad_v3.sql`)
+
+### 6.1 `sp_consultar_usuario_por_username`
 
 ```sql
 sp_consultar_usuario_por_username @username VARCHAR(100)
@@ -69,7 +89,7 @@ Devuelve `id, username, password, email, nombre_completo, activo` de
 es el único punto de la API que lee esa columna, y lo hace el servicio de
 autenticación, nunca un controlador ni una respuesta HTTP.
 
-### 5.2 `sp_listar_roles_usuario`
+### 6.2 `sp_listar_roles_usuario`
 
 ```sql
 sp_listar_roles_usuario @usuario_id INT
@@ -78,7 +98,31 @@ sp_listar_roles_usuario @usuario_id INT
 Devuelve los `nombre` de `rol` para ese usuario, solo los que tengan
 `activo = 1`, ordenados alfabéticamente.
 
-## 6. Migración de contraseñas de demostración
+## 7. Procedimientos de revocación (`db/10_revocacion_tokens_v3.sql`)
+
+### 7.1 `sp_revocar_token`
+
+```sql
+sp_revocar_token @jti VARCHAR(50)
+```
+
+Inserta el `jti` en `token_revocado` **si no estaba ya** (`IF NOT EXISTS`):
+revocar dos veces el mismo token no falla ni duplica la fila. Lo llama
+`ServicioRevocacionToken.RevocarAsync`, invocado desde
+`AuthController.Logout`.
+
+### 7.2 `sp_token_revocado`
+
+```sql
+sp_token_revocado @jti VARCHAR(50)
+```
+
+Devuelve `1` (`BIT`) si ese `jti` está en la lista negra, `0` si no. Lo
+consulta `ServicioRevocacionToken.EstaRevocadoAsync`, llamado desde
+`OnTokenValidated` en **cada** petición autenticada (ver
+[3_plan.md](3_plan.md) §3).
+
+## 8. Migración de contraseñas de demostración
 
 Los 5 usuarios sembrados por `08_seeders.sql` (`admin`, `coordinador`,
 `docente.demo`, `secretaria`, `consulta`) entran con la contraseña literal
@@ -96,13 +140,16 @@ UPDATE usuario
 Esto hace que el script sea **idempotente**: correrlo dos veces, o sobre
 una base que ya migró, no cambia nada.
 
-## 7. Convenciones
+## 9. Convenciones
 
 - Las PK de `usuario` y `rol` son `IDENTITY`, igual que el catálogo
-  `docente` de v2 — ningún identificador se digita.
+  `docente` de v2 — ningún identificador se digita. La PK de
+  `token_revocado` es el propio `jti` (no autogenerada: ya viene del JWT).
 - `usuario.password` **nunca** sale de la API: `UsuarioAutenticadoRespuesta`
   (la forma pública del usuario) no tiene esa propiedad; solo
   `RepositorioUsuarioSqlServer` y `ServicioAutenticacion` la tocan.
-- Esta versión **no agrega** CRUD sobre estas 3 tablas (sin `INSERT`/`UPDATE`
-  de `rol` ni de `rol_usuario` desde la API); solo lectura para autenticar.
-  Ver [2_spec.md](2_spec.md) §2 y [8_tasks.md](8_tasks.md) Fase 5.
+- Esta versión **no agrega** CRUD sobre `usuario`/`rol`/`rol_usuario` (sin
+  `INSERT`/`UPDATE` desde la API); solo lectura para autenticar. Ver
+  [2_spec.md](2_spec.md) §2 y [8_tasks.md](8_tasks.md) Fase 5.
+  `token_revocado` sí tiene una única escritura posible —
+  `sp_revocar_token`, por logout— nunca un `UPDATE` ni `DELETE` desde la API.
