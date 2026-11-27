@@ -150,9 +150,4 @@ frontend/src/app/
 No hay carpetas nuevas de nivel superior: todo cuelga del mismo andamiaje de
 v1/v2 (`Controllers/`, `Servicios/`, `Repositorios/`, `Excepciones/`).
 
-## 7. Lo que queda fuera de este plan
 
-El CRUD de `usuario`/`rol`/`rol_usuario` para administradores (controlador,
-servicio, repositorio de escritura y pantalla admin) **no está planeado
-aquí**: es el siguiente incremento de la v3 (ver [2_spec.md](2_spec.md) §2 y
-[8_tasks.md](8_tasks.md) Fase 5).

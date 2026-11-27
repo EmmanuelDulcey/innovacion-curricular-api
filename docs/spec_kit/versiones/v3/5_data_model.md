@@ -148,8 +148,3 @@ una base que ya migró, no cambia nada.
 - `usuario.password` **nunca** sale de la API: `UsuarioAutenticadoRespuesta`
   (la forma pública del usuario) no tiene esa propiedad; solo
   `RepositorioUsuarioSqlServer` y `ServicioAutenticacion` la tocan.
-- Esta versión **no agrega** CRUD sobre `usuario`/`rol`/`rol_usuario` (sin
-  `INSERT`/`UPDATE` desde la API); solo lectura para autenticar. Ver
-  [2_spec.md](2_spec.md) §2 y [8_tasks.md](8_tasks.md) Fase 5.
-  `token_revocado` sí tiene una única escritura posible —
-  `sp_revocar_token`, por logout— nunca un `UPDATE` ni `DELETE` desde la API.

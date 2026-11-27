@@ -158,10 +158,3 @@ recortaría la hora y la zona, y el Frontend no podría calcular el
 vencimiento real de la sesión. Por eso `Expira` es `DateTimeOffset`: evita el
 converter global y conserva hora y zona completas.
 
-## D9 — Alcance pendiente (explícito, no un olvido)
-
-El CRUD admin de `usuario`/`rol`/`rol_usuario` **no se investigó ni se
-planeó** en este documento porque no entró en este incremento (ver
-[2_spec.md](2_spec.md) §2). Cuando se construya, su investigación (¿se
-reasignan roles con PUT o con un endpoint de "asignar rol" como las tablas
-puente de v2?) debe agregarse aquí, no reabrir D1-D8.

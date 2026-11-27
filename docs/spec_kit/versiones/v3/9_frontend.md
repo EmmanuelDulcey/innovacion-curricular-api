@@ -158,10 +158,3 @@ verdad es el 403 del backend.
 Incluye el botón de **cerrar sesión**, que llama a
 `AuthService.cerrarSesion()`.
 
-## 10. Lo que esta versión NO agrega al Frontend
-
-- Pantalla de administración de usuarios/roles (ver
-  [8_tasks.md](8_tasks.md) Fase 5).
-- Registro de usuarios nuevos desde la interfaz.
-- Recordar sesión "para siempre" (expira con el JWT, 480 minutos por
-  defecto; no hay refresh token).
