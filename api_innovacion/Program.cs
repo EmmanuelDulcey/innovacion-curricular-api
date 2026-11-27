@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using ApiInnovacion.Configuracion;
@@ -160,6 +162,25 @@ builder.Services
             NameClaimType = "unique_name",
             RoleClaimType = "role"
         };
+
+        // Revocacion (v3): la firma y la expiracion pueden ser validas y, aun
+        // asi, el token fue cerrado por logout. Se comprueba en cada peticion
+        // autenticada, DESPUES de validar firma/expiracion (mas barato primero).
+        opciones.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async contexto =>
+            {
+                var jti = contexto.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
+                if (string.IsNullOrEmpty(jti))
+                    return;
+
+                var revocacion = contexto.HttpContext.RequestServices
+                    .GetRequiredService<IServicioRevocacionToken>();
+
+                if (await revocacion.EstaRevocadoAsync(jti))
+                    contexto.Fail("Token revocado.");
+            }
+        };
     });
 
 builder.Services.AddAuthorization(opciones =>
@@ -313,6 +334,12 @@ builder.Services.AddSingleton<ITokenJwt, ServicioTokenJwt>();
 builder.Services.AddScoped<IRepositorioUsuario>(
     _ => new RepositorioUsuarioSqlServer(cadenaConexion));
 builder.Services.AddScoped<IServicioAutenticacion, ServicioAutenticacion>();
+
+// v3 - revocacion de sesion (logout real): lista negra de jti en base de
+// datos, consultada en cada peticion por OnTokenValidated (mas abajo).
+builder.Services.AddScoped<IRepositorioTokenRevocado>(
+    _ => new RepositorioTokenRevocadoSqlServer(cadenaConexion));
+builder.Services.AddScoped<IServicioRevocacionToken, ServicioRevocacionToken>();
 
 var app = builder.Build();
 

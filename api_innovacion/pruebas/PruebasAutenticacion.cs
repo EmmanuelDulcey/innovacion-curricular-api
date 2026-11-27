@@ -1,7 +1,8 @@
 // =============================================================================
 // PruebasAutenticacion.cs
 // Pruebas de capa de la v3, sin SQL Server: validan el login con hash bcrypt,
-// los rechazos genéricos, la emisión del JWT y la regla de roles de escritura.
+// los rechazos genéricos, la emisión del JWT, la regla de roles de escritura
+// y la revocación de sesión (logout real).
 // =============================================================================
 using System.IdentityModel.Tokens.Jwt;
 using ApiInnovacion.Configuracion;
@@ -111,6 +112,21 @@ public static class PruebasAutenticacion
         Confirmar(jwt.Claims.Any(claim => claim.Type == "nameid" && claim.Value == "1"),
             "JWT: incluye el identificador del usuario", ref pruebas);
 
+        // Revocacion de sesion (logout real): revocar un jti lo marca
+        // revocado; un jti distinto (o sin revocar) no se ve afectado.
+        var revocacion = new ServicioRevocacionToken(new RepositorioTokenRevocadoFalso());
+        var jtiSesion = jwt.Claims.First(claim => claim.Type == JwtRegisteredClaimNames.Jti).Value;
+        Confirmar(!await revocacion.EstaRevocadoAsync(jtiSesion),
+            "Revocacion: un jti recien emitido no esta revocado", ref pruebas);
+        await revocacion.RevocarAsync(jtiSesion);
+        Confirmar(await revocacion.EstaRevocadoAsync(jtiSesion),
+            "Revocacion: tras revocar, el mismo jti queda revocado", ref pruebas);
+        Confirmar(!await revocacion.EstaRevocadoAsync("otro-jti-sin-revocar"),
+            "Revocacion: revocar un jti no afecta a otro distinto", ref pruebas);
+        await revocacion.RevocarAsync(jtiSesion);
+        Confirmar(await revocacion.EstaRevocadoAsync(jtiSesion),
+            "Revocacion: revocar dos veces el mismo jti no falla (idempotente)", ref pruebas);
+
         return pruebas;
     }
 
@@ -148,6 +164,27 @@ public static class PruebasAutenticacion
         {
             Console.WriteLine($"  [OK] {nombre}");
             return 1;
+        }
+    }
+
+    /// <summary>
+    /// Lista negra de jti en memoria: el mismo contrato de
+    /// IRepositorioTokenRevocado, sin SQL Server, para probar
+    /// ServicioRevocacionToken aislado.
+    /// </summary>
+    private sealed class RepositorioTokenRevocadoFalso : IRepositorioTokenRevocado
+    {
+        private readonly HashSet<string> _revocados = new();
+
+        public Task RevocarAsync(string jti)
+        {
+            _revocados.Add(jti);
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> EstaRevocadoAsync(string jti)
+        {
+            return Task.FromResult(_revocados.Contains(jti));
         }
     }
 

@@ -14,6 +14,7 @@
 #   7. 07_docente.sql                         -> catálogo auxiliar con IDENTITY
 #   8. 08_seeders.sql                         -> al menos 5 filas activas por tabla
 #   9. 09_seguridad_v3.sql                    -> login JWT y contraseñas bcrypt
+#  10. 10_revocacion_tokens_v3.sql             -> lista negra de jti (logout real)
 #
 # Los pasos 1-3 son la base de la v1: sólo corren cuando la base NO existe, para
 # no volver a sembrar (no se borran cambios hechos por la API). Los pasos 4-8 son
@@ -95,12 +96,13 @@ esac
 #   * 07_docente.sql                       -> catálogo docente y FK locales
 #   * 08_seeders.sql                       -> al menos 5 filas activas por tabla
 #   * 09_seguridad_v3.sql                  -> procedimientos y hashes de login
+#   * 10_revocacion_tokens_v3.sql          -> lista negra de jti (logout real)
 # -----------------------------------------------------------------------------
 echo "[init] Aplicando los scripts de la v2/v3 (idempotentes)."
 run_script /scripts/03_activar_borrado_logico_v2.sql
 
 shopt -s nullglob
-for script in /scripts/04_*.sql /scripts/05_*.sql /scripts/06_*.sql /scripts/07_*.sql /scripts/08_*.sql /scripts/09_*.sql; do
+for script in /scripts/04_*.sql /scripts/05_*.sql /scripts/06_*.sql /scripts/07_*.sql /scripts/08_*.sql /scripts/09_*.sql /scripts/10_*.sql; do
   run_script "$script"
 done
 
